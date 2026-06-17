@@ -8,8 +8,10 @@ public record BarberResponse(
 		Long id,
 		String fullName,
 		String phone,
+		String email,
 		boolean active,
-		Instant createdAt
+		Instant createdAt,
+		Instant updatedAt
 ) {
 
 	public static BarberResponse from(Barber barber) {
@@ -17,8 +19,10 @@ public record BarberResponse(
 				barber.id(),
 				barber.fullName(),
 				barber.phone(),
+				barber.email(),
 				barber.active(),
-				barber.createdAt()
+				barber.createdAt(),
+				barber.updatedAt()
 		);
 	}
 }

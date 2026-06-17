@@ -8,23 +8,42 @@ public record Barber(
 		Long id,
 		String fullName,
 		String phone,
+		String email,
 		boolean active,
-		Instant createdAt
+		Instant createdAt,
+		Instant updatedAt
 ) {
 
 	public Barber {
 		validateId(id, "Barber id");
 		fullName = requireText(fullName, "Barber full name is required");
-		phone = normalizeOptionalText(phone);
+		phone = requireText(phone, "Barber phone is required");
+		email = normalizeOptionalText(email);
 		createdAt = createdAt == null ? Instant.now() : createdAt;
+		updatedAt = updatedAt == null ? createdAt : updatedAt;
+	}
+
+	public static Barber create(String fullName, String phone, String email) {
+		Instant now = Instant.now();
+		return new Barber(null, fullName, phone, email, true, now, now);
+	}
+
+	public Barber update(String fullName, String phone, String email) {
+		return new Barber(id, fullName, phone, email, active, createdAt, Instant.now());
 	}
 
 	public Barber activate() {
-		return new Barber(id, fullName, phone, true, createdAt);
+		if (active) {
+			return this;
+		}
+		return new Barber(id, fullName, phone, email, true, createdAt, Instant.now());
 	}
 
 	public Barber deactivate() {
-		return new Barber(id, fullName, phone, false, createdAt);
+		if (!active) {
+			return this;
+		}
+		return new Barber(id, fullName, phone, email, false, createdAt, Instant.now());
 	}
 
 	private static String requireText(String value, String message) {

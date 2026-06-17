@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
+import com.villamil.barberbooking.domain.exception.BarberAlreadyExistsException;
+import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
 import com.villamil.barberbooking.domain.exception.CustomerAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
 
@@ -26,6 +28,16 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(CustomerAlreadyExistsException.class)
 	public ResponseEntity<ProblemDetail> handleCustomerAlreadyExists(CustomerAlreadyExistsException exception) {
 		return problem(HttpStatus.CONFLICT, "Customer already exists", exception.getMessage());
+	}
+
+	@ExceptionHandler(BarberNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handleBarberNotFound(BarberNotFoundException exception) {
+		return problem(HttpStatus.NOT_FOUND, "Barber not found", exception.getMessage());
+	}
+
+	@ExceptionHandler(BarberAlreadyExistsException.class)
+	public ResponseEntity<ProblemDetail> handleBarberAlreadyExists(BarberAlreadyExistsException exception) {
+		return problem(HttpStatus.CONFLICT, "Barber already exists", exception.getMessage());
 	}
 
 	@ExceptionHandler(BusinessRuleException.class)

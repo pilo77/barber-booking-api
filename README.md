@@ -14,6 +14,7 @@ Foundation inicial del proyecto:
 - Modelo de dominio base y puertos de aplicacion.
 - Documentacion de arquitectura, contrato API y flujo Git.
 - CRUD de clientes con soft delete logico.
+- CRUD de barberos con activacion y desactivacion logica.
 
 ## Requisitos
 

@@ -48,6 +48,30 @@ PATCH  /api/v1/barbers/{id}/activate
 PATCH  /api/v1/barbers/{id}/deactivate
 ```
 
+Request `POST /api/v1/barbers`:
+
+```json
+{
+  "fullName": "Carlos Gomez",
+  "phone": "3101234567",
+  "email": "carlos@example.com"
+}
+```
+
+Response:
+
+```json
+{
+  "id": 1,
+  "fullName": "Carlos Gomez",
+  "phone": "3101234567",
+  "email": "carlos@example.com",
+  "active": true,
+  "createdAt": "2026-06-17T12:00:00Z",
+  "updatedAt": "2026-06-17T12:00:00Z"
+}
+```
+
 ## Services
 
 ```http

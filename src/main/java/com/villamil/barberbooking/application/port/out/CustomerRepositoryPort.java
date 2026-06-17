@@ -12,4 +12,12 @@ public interface CustomerRepositoryPort {
 	Optional<Customer> findById(Long id);
 
 	List<Customer> findAll();
+
+	boolean existsByPhone(String phone);
+
+	boolean existsByEmail(String email);
+
+	boolean existsByPhoneAndIdNot(String phone, Long id);
+
+	boolean existsByEmailAndIdNot(String email, Long id);
 }

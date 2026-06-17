@@ -9,7 +9,9 @@ public record Customer(
 		String fullName,
 		String phone,
 		String email,
-		Instant createdAt
+		boolean active,
+		Instant createdAt,
+		Instant updatedAt
 ) {
 
 	public Customer {
@@ -18,6 +20,23 @@ public record Customer(
 		phone = requireText(phone, "Customer phone is required");
 		email = normalizeOptionalText(email);
 		createdAt = createdAt == null ? Instant.now() : createdAt;
+		updatedAt = updatedAt == null ? createdAt : updatedAt;
+	}
+
+	public static Customer create(String fullName, String phone, String email) {
+		Instant now = Instant.now();
+		return new Customer(null, fullName, phone, email, true, now, now);
+	}
+
+	public Customer update(String fullName, String phone, String email) {
+		return new Customer(id, fullName, phone, email, active, createdAt, Instant.now());
+	}
+
+	public Customer deactivate() {
+		if (!active) {
+			return this;
+		}
+		return new Customer(id, fullName, phone, email, false, createdAt, Instant.now());
 	}
 
 	private static String requireText(String value, String message) {

@@ -13,6 +13,7 @@ Foundation inicial del proyecto:
 - Migracion inicial de base de datos.
 - Modelo de dominio base y puertos de aplicacion.
 - Documentacion de arquitectura, contrato API y flujo Git.
+- CRUD de clientes con soft delete logico.
 
 ## Requisitos
 

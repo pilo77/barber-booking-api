@@ -10,7 +10,31 @@ POST   /api/v1/customers
 GET    /api/v1/customers
 GET    /api/v1/customers/{id}
 PUT    /api/v1/customers/{id}
-DELETE /api/v1/customers/{id}
+PATCH  /api/v1/customers/{id}/deactivate
+```
+
+Request `POST /api/v1/customers`:
+
+```json
+{
+  "fullName": "Ana Perez",
+  "phone": "3001234567",
+  "email": "ana@example.com"
+}
+```
+
+Response:
+
+```json
+{
+  "id": 1,
+  "fullName": "Ana Perez",
+  "phone": "3001234567",
+  "email": "ana@example.com",
+  "active": true,
+  "createdAt": "2026-06-17T12:00:00Z",
+  "updatedAt": "2026-06-17T12:00:00Z"
+}
 ```
 
 ## Barbers

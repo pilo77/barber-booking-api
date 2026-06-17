@@ -9,7 +9,9 @@ public record CustomerResponse(
 		String fullName,
 		String phone,
 		String email,
-		Instant createdAt
+		boolean active,
+		Instant createdAt,
+		Instant updatedAt
 ) {
 
 	public static CustomerResponse from(Customer customer) {
@@ -18,7 +20,9 @@ public record CustomerResponse(
 				customer.fullName(),
 				customer.phone(),
 				customer.email(),
-				customer.createdAt()
+				customer.active(),
+				customer.createdAt(),
+				customer.updatedAt()
 		);
 	}
 }

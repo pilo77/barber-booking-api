@@ -88,6 +88,35 @@ class TemporaryTenantHeaderFilterTest {
 	}
 
 	@Test
+	void shouldNotUseTenantHeadersForAuthenticatedUserWithoutTenant() throws ServletException, IOException {
+		AuthenticatedUserResponse user = new AuthenticatedUserResponse(
+				9L,
+				"platform@example.com",
+				"Platform User",
+				null,
+				null,
+				Set.of(Role.PLATFORM_OWNER)
+		);
+		AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+				user,
+				Set.of(new SimpleGrantedAuthority("ROLE_PLATFORM_OWNER"))
+		);
+		SecurityContextHolder.getContext().setAuthentication(
+				new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+		);
+		MockHttpServletRequest request = new MockHttpServletRequest();
+		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "2");
+		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "3");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		CapturingFilterChain chain = new CapturingFilterChain(tenantContextProvider);
+
+		filter.doFilter(request, response, chain);
+
+		assertThat(chain.tenantContext).isEqualTo(TenantContext.DEFAULT);
+		assertThat(response.getStatus()).isEqualTo(200);
+	}
+
+	@Test
 	void shouldRejectInvalidTenantHeader() throws ServletException, IOException {
 		MockHttpServletRequest request = new MockHttpServletRequest();
 		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "invalid");

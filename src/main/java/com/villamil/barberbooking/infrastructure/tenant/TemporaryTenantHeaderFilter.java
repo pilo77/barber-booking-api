@@ -50,10 +50,11 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication != null
 				&& authentication.isAuthenticated()
-				&& authentication.getPrincipal() instanceof AuthenticatedUserPrincipal principal
-				&& principal.user().companyId() != null
-				&& principal.user().branchId() != null) {
-			return new TenantContext(principal.user().companyId(), principal.user().branchId());
+				&& authentication.getPrincipal() instanceof AuthenticatedUserPrincipal principal) {
+			if (principal.user().companyId() != null && principal.user().branchId() != null) {
+				return new TenantContext(principal.user().companyId(), principal.user().branchId());
+			}
+			return TenantContext.DEFAULT;
 		}
 		Long companyId = parsePositiveHeader(request, COMPANY_HEADER, TenantContext.DEFAULT_COMPANY_ID);
 		Long branchId = parsePositiveHeader(request, BRANCH_HEADER, TenantContext.DEFAULT_BRANCH_ID);

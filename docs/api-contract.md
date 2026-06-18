@@ -79,8 +79,38 @@ POST   /api/v1/services
 GET    /api/v1/services
 GET    /api/v1/services/{id}
 PUT    /api/v1/services/{id}
-DELETE /api/v1/services/{id}
+PATCH  /api/v1/services/{id}/activate
+PATCH  /api/v1/services/{id}/deactivate
 ```
+
+Request `POST /api/v1/services`:
+
+```json
+{
+  "name": "Corte clasico",
+  "description": "Corte tradicional",
+  "durationMinutes": 30,
+  "price": 25000.00
+}
+```
+
+Response:
+
+```json
+{
+  "id": 1,
+  "name": "Corte clasico",
+  "description": "Corte tradicional",
+  "durationMinutes": 30,
+  "price": 25000.00,
+  "active": true,
+  "createdAt": "2026-06-17T12:00:00Z",
+  "updatedAt": "2026-06-17T12:00:00Z"
+}
+```
+
+El endpoint no expone borrado fisico. La desactivacion se realiza con
+`PATCH /api/v1/services/{id}/deactivate` y conserva el registro historico.
 
 ## Appointments
 

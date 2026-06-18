@@ -14,6 +14,8 @@ import com.villamil.barberbooking.domain.exception.BarberAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
 import com.villamil.barberbooking.domain.exception.CustomerAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
+import com.villamil.barberbooking.domain.exception.ServiceOfferingAlreadyExistsException;
+import com.villamil.barberbooking.domain.exception.ServiceOfferingNotFoundException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -38,6 +40,18 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BarberAlreadyExistsException.class)
 	public ResponseEntity<ProblemDetail> handleBarberAlreadyExists(BarberAlreadyExistsException exception) {
 		return problem(HttpStatus.CONFLICT, "Barber already exists", exception.getMessage());
+	}
+
+	@ExceptionHandler(ServiceOfferingNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handleServiceOfferingNotFound(ServiceOfferingNotFoundException exception) {
+		return problem(HttpStatus.NOT_FOUND, "Service offering not found", exception.getMessage());
+	}
+
+	@ExceptionHandler(ServiceOfferingAlreadyExistsException.class)
+	public ResponseEntity<ProblemDetail> handleServiceOfferingAlreadyExists(
+			ServiceOfferingAlreadyExistsException exception
+	) {
+		return problem(HttpStatus.CONFLICT, "Service offering already exists", exception.getMessage());
 	}
 
 	@ExceptionHandler(BusinessRuleException.class)

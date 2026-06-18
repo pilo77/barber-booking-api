@@ -45,6 +45,13 @@ public class CustomerPersistenceAdapter implements CustomerRepositoryPort {
 	}
 
 	@Override
+	public Optional<Customer> findByPhone(String phone) {
+		TenantContext tenantContext = tenantContextProvider.currentTenant();
+		return customerJpaRepository.findByCompanyIdAndPhone(tenantContext.companyId(), phone)
+				.map(customerPersistenceMapper::toDomain);
+	}
+
+	@Override
 	public List<Customer> findAll() {
 		TenantContext tenantContext = tenantContextProvider.currentTenant();
 		return customerJpaRepository.findAllByCompanyIdOrderByIdAsc(tenantContext.companyId())

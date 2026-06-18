@@ -47,6 +47,9 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 	}
 
 	private TenantContext resolveTenant(HttpServletRequest request) {
+		if (request.getRequestURI().startsWith("/api/v1/public/")) {
+			return TenantContext.DEFAULT;
+		}
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 		if (authentication != null
 				&& authentication.isAuthenticated()

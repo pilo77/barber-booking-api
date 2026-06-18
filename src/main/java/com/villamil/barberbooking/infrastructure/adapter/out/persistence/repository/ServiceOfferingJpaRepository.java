@@ -10,6 +10,8 @@ public interface ServiceOfferingJpaRepository extends JpaRepository<ServiceOffer
 
 	Optional<ServiceOfferingJpaEntity> findByIdAndCompanyId(Long id, Long companyId);
 
+	Optional<ServiceOfferingJpaEntity> findByIdAndCompanyIdAndActiveTrueAndVisibleForOnlineBookingTrue(Long id, Long companyId);
+
 	List<ServiceOfferingJpaEntity> findAllByCompanyIdOrderByIdAsc(Long companyId);
 
 	List<ServiceOfferingJpaEntity> findAllByCompanyIdAndActiveTrueAndVisibleForOnlineBookingTrueOrderBySortOrderAscIdAsc(Long companyId);

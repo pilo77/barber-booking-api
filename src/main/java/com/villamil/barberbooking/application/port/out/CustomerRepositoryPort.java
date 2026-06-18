@@ -11,6 +11,8 @@ public interface CustomerRepositoryPort {
 
 	Optional<Customer> findById(Long id);
 
+	Optional<Customer> findByPhone(String phone);
+
 	List<Customer> findAll();
 
 	boolean existsByPhone(String phone);

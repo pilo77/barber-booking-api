@@ -116,7 +116,8 @@ Authorization: Bearer <accessToken>
 ## Public Barber Shop Profile
 
 HU-20 expone consultas publicas sin JWT para mostrar una barberia, sus sedes,
-servicios visibles y barberos visibles. No crea citas publicas todavia.
+servicios visibles y barberos visibles. HU-21 usa esos recursos para consultar
+disponibilidad y crear citas publicas.
 
 Endpoints:
 
@@ -203,6 +204,82 @@ Reglas de exposicion:
 - No se exponen emails internos, telefonos de barberos, usuarios, roles,
   password hashes, `companyId` ni `branchId`.
 - Si el recurso no existe o esta inactivo, se responde `404`.
+
+## Public Availability and Booking
+
+HU-21 permite consultar slots y reservar sin login. El tenant se resuelve
+exclusivamente desde `companySlug + branchSlug`; los headers `X-Company-Id` y
+`X-Branch-Id` se ignoran para rutas publicas.
+
+```http
+GET  /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/barbers/{barberId}/availability?date=2026-06-20&serviceOfferingId=1
+POST /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/appointments
+```
+
+La disponibilidad devuelve el mismo formato de slots documentado en
+`Availability`, pero solo si company, branch, service y barber son publicamente
+reservables dentro del tenant resuelto.
+
+Request de reserva publica:
+
+```json
+{
+  "serviceOfferingId": 1,
+  "barberId": 2,
+  "startAt": "2026-06-20T10:00:00",
+  "customer": {
+    "fullName": "Carlos Villamil",
+    "phone": "3001234567",
+    "email": "cliente@example.com"
+  }
+}
+```
+
+`companyId`, `branchId`, `customerId` y `endAt` no se aceptan en el request
+publico. `startAt` debe ser futuro y `endAt` se calcula con la duracion del
+servicio.
+
+Response `201 Created`:
+
+```json
+{
+  "id": 10,
+  "status": "SCHEDULED",
+  "source": "ONLINE",
+  "startAt": "2026-06-20T10:00:00",
+  "endAt": "2026-06-20T10:30:00",
+  "service": {
+    "id": 1,
+    "name": "Corte clasico",
+    "durationMinutes": 30,
+    "price": 25000.00
+  },
+  "barber": {
+    "id": 2,
+    "displayName": "Santiago",
+    "photoUrl": null
+  },
+  "customer": {
+    "fullName": "Carlos Villamil",
+    "phone": "3001234567"
+  }
+}
+```
+
+Reglas:
+
+- Company y branch deben existir, estar activas y corresponder a los slugs.
+- Service debe pertenecer a la company, estar activo y visible online.
+- Barber debe pertenecer a esa company/branch, estar activo y visible online.
+- Customer se busca por `company + phone`; se reutiliza si esta activo o se
+  crea dentro de la company. El cliente publico nunca envia `customerId`.
+- Se reutilizan horarios laborales, estados bloqueantes y regla de solape de
+  `AppointmentBookingPolicy`.
+- Recurso no publicable: `404`. Horario invalido, solape o recurso interno
+  inactivo: `409` segun el manejador existente.
+- No hay pagos, cancelacion publica ni reprogramacion publica en HU-21.
+- Los servicios siguen siendo company-wide. El catalogo por sede requiere una
+  relacion futura `branch_services`.
 
 ## User Accounts
 

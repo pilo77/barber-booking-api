@@ -42,38 +42,37 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   derivado del contexto de seguridad/JWT en HU-18. Estado: implementado como
   prioridad principal. Los headers siguen existiendo como fallback temporal
   cuando no hay usuario autenticado.
-- Limitar rol `BARBER` a su propio barbero requiere una relacion formal
-  `user_account -> barber`; queda pendiente para una HU futura.
+- Limitar rol `BARBER` a su propio barbero quedo cubierto en HU-19 mediante
+  `user_accounts.barber_id`.
 - `COMPANY_OWNER` actualmente crea usuarios en el tenant/branch derivado del
   JWT. La gestion completa multi-branch de usuarios dentro de una company queda
   pendiente.
 
-## HU-18 Auth/RBAC limitations
+## HU-18/HU-19 Auth/RBAC limitations
 
-HU-18 implementa una base funcional de autenticacion y RBAC, pero no debe
-tratarse como autorizacion final de produccion. La autorizacion actual combina
-roles y paths de Spring Security con validaciones de tenant en casos de uso.
-Esto sirve como foundation, pero todavia no implementa ownership authorization
-fina por recurso, operacion y relacion del usuario con la entidad operativa.
+HU-18 implemento una base funcional de autenticacion y RBAC. HU-19 agrego
+hardening de ownership para los flujos actuales mas sensibles: user accounts,
+agenda, dashboard, availability y lifecycle de citas. Esto mejora la seguridad
+operativa, pero todavia no debe tratarse como autorizacion final completa de
+produccion para modulos futuros.
 
 Limitaciones documentadas antes de merge:
 
-- RBAC actual es por rol/path, no por ownership completo.
-- Falta una relacion formal `user_account -> barber`.
-- `BARBER` todavia no queda limitado estrictamente a su propia agenda,
-  dashboard y citas.
-- `BRANCH_MANAGER` requiere reglas finas por operacion dentro de su branch.
-- `RECEPTIONIST` requiere permisos operativos mas precisos por modulo.
-- Algunos roles internos tienen acceso amplio a modulos que no siempre
-  necesitan para su responsabilidad final.
+- Spring Security sigue siendo una primera barrera por rol/path; las reglas de
+  ownership viven en application services/policies.
+- `BRANCH_MANAGER` queda protegido por tenant/branch actual, pero la gestion
+  multi-branch completa requiere endpoints de administracion de branches.
+- `RECEPTIONIST` queda restringido fuera de user accounts y modulos de gestion,
+  pero futuras operaciones de caja/pagos/inventario deben definir permisos
+  propios.
 - JWT todavia no incluye validacion de issuer, audience ni `jti`; debe
   endurecerse antes de produccion.
 - Falta auditoria persistente de acciones sensibles como bootstrap, login
   fallido repetido, creacion/desactivacion de usuarios y cambios de roles.
 
-Decision: crear como siguiente HU obligatoria `HU-19: Authorization hardening
-and ownership rules` antes de construir perfil publico, caja, pagos o
-inventario.
+Decision: despues de auditar HU-19, el siguiente bloque funcional puede avanzar
+hacia perfil publico, manteniendo issuer/audience/jti y auditoria persistente
+como hardening previo a produccion.
 
 ## Referencias
 

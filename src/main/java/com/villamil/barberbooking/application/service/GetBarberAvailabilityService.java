@@ -7,6 +7,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,13 +34,18 @@ class GetBarberAvailabilityService implements GetBarberAvailabilityUseCase {
 	private final ServiceOfferingRepositoryPort serviceOfferingRepositoryPort;
 	private final BarberWorkingHourRepositoryPort barberWorkingHourRepositoryPort;
 	private final AppointmentRepositoryPort appointmentRepositoryPort;
+	private final CurrentUserResolver currentUserResolver;
+	private final UserAuthorizationPolicy userAuthorizationPolicy;
 	private final int slotStepMinutes;
 
+	@Autowired
 	GetBarberAvailabilityService(
 			BarberRepositoryPort barberRepositoryPort,
 			ServiceOfferingRepositoryPort serviceOfferingRepositoryPort,
 			BarberWorkingHourRepositoryPort barberWorkingHourRepositoryPort,
 			AppointmentRepositoryPort appointmentRepositoryPort,
+			CurrentUserResolver currentUserResolver,
+			UserAuthorizationPolicy userAuthorizationPolicy,
 			@Value("${booking.slot-step-minutes:15}") int slotStepMinutes
 	) {
 		if (slotStepMinutes <= 0) {
@@ -49,12 +55,38 @@ class GetBarberAvailabilityService implements GetBarberAvailabilityUseCase {
 		this.serviceOfferingRepositoryPort = serviceOfferingRepositoryPort;
 		this.barberWorkingHourRepositoryPort = barberWorkingHourRepositoryPort;
 		this.appointmentRepositoryPort = appointmentRepositoryPort;
+		this.currentUserResolver = currentUserResolver;
+		this.userAuthorizationPolicy = userAuthorizationPolicy;
 		this.slotStepMinutes = slotStepMinutes;
+	}
+
+	GetBarberAvailabilityService(
+			BarberRepositoryPort barberRepositoryPort,
+			ServiceOfferingRepositoryPort serviceOfferingRepositoryPort,
+			BarberWorkingHourRepositoryPort barberWorkingHourRepositoryPort,
+			AppointmentRepositoryPort appointmentRepositoryPort,
+			int slotStepMinutes
+	) {
+		this(
+				barberRepositoryPort,
+				serviceOfferingRepositoryPort,
+				barberWorkingHourRepositoryPort,
+				appointmentRepositoryPort,
+				null,
+				null,
+				slotStepMinutes
+		);
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public BarberAvailabilityResponse getAvailability(GetBarberAvailabilityCommand command) {
+		if (currentUserResolver != null) {
+			userAuthorizationPolicy.ensureCanAccessBarberSchedule(
+					currentUserResolver.requireCurrentUser(),
+					command.barberId()
+			);
+		}
 		Barber barber = barberRepositoryPort.findById(command.barberId())
 				.orElseThrow(() -> new BarberNotFoundException("Barber not found"));
 		if (!barber.active()) {

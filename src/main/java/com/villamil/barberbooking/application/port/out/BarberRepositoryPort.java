@@ -17,6 +17,8 @@ public interface BarberRepositoryPort {
 
 	boolean existsByEmail(String email);
 
+	boolean existsByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
+
 	boolean existsByPhoneAndIdNot(String phone, Long id);
 
 	boolean existsByEmailAndIdNot(String email, Long id);

@@ -9,6 +9,8 @@ public record CreateUserAccountCommand(
 		String password,
 		String fullName,
 		String phone,
+		Long branchId,
+		Long barberId,
 		Set<Role> roles
 ) {
 }

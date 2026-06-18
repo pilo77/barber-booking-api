@@ -16,6 +16,8 @@ public interface BarberJpaRepository extends JpaRepository<BarberJpaEntity, Long
 
 	boolean existsByCompanyIdAndEmail(Long companyId, String email);
 
+	boolean existsByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
+
 	boolean existsByCompanyIdAndPhoneAndIdNot(Long companyId, String phone, Long id);
 
 	boolean existsByCompanyIdAndEmailAndIdNot(Long companyId, String email, Long id);

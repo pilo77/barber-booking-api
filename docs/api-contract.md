@@ -20,6 +20,7 @@ resuelve primero desde el usuario autenticado:
 
 - `companyId`
 - `branchId`
+- `barberId` cuando el usuario interno esta vinculado a un barbero
 - `roles`
 
 Los headers temporales siguen disponibles solo como fallback de desarrollo o
@@ -40,7 +41,7 @@ Reglas:
 - `X-Company-Id` scopea `customers` y `services`.
 - `X-Company-Id` + `X-Branch-Id` scopean `barbers`, `working-hours`,
   `appointments`, `availability` y `daily-dashboard`.
-- Esta estrategia de headers es temporal. En HU-19/HU-20 los endpoints publicos
+- Esta estrategia de headers es temporal. En HU-20 los endpoints publicos
   resolveran la barberia por `slug`, no por ids enviados por el cliente.
 
 ## Auth and RBAC
@@ -97,6 +98,7 @@ Response:
     "fullName": "Owner User",
     "companyId": 1,
     "branchId": 1,
+    "barberId": null,
     "roles": ["COMPANY_OWNER"]
   }
 }
@@ -130,13 +132,47 @@ Request `POST /api/v1/user-accounts`:
   "password": "StrongPassword123!",
   "fullName": "Reception User",
   "phone": "3001234567",
+  "branchId": 1,
   "roles": ["RECEPTIONIST"]
 }
 ```
 
-El body no acepta `companyId` ni `branchId`; esos valores se derivan del JWT
-del usuario autenticado. `COMPANY_OWNER` puede crear roles operativos internos,
-pero no `PLATFORM_OWNER`, `COMPANY_OWNER` ni `CUSTOMER` desde este endpoint.
+Para crear un usuario con rol `BARBER`, el body debe incluir `barberId`:
+
+```json
+{
+  "email": "barber@example.com",
+  "password": "StrongPassword123!",
+  "fullName": "Barber User",
+  "phone": "3001234568",
+  "branchId": 1,
+  "barberId": 5,
+  "roles": ["BARBER"]
+}
+```
+
+El body no acepta `companyId`; se deriva del JWT del usuario autenticado.
+`branchId` es opcional y, si se envia, debe pertenecer a la company del usuario
+actual. `BRANCH_MANAGER` solo puede crear usuarios dentro de su branch.
+`barberId`, cuando se envia, debe pertenecer a la misma company/branch y solo
+puede usarse para usuarios con rol `BARBER`. `COMPANY_OWNER` puede crear roles
+operativos internos, pero no `PLATFORM_OWNER`, `COMPANY_OWNER` ni `CUSTOMER`
+desde este endpoint.
+
+Responses de usuario y `GET /api/v1/auth/me` incluyen `barberId` y nunca
+incluyen `passwordHash`.
+
+Reglas de ownership principales:
+
+- `BARBER` solo puede consultar su agenda, dashboard, availability y operar
+  citas asociadas a su propio `barberId`.
+- `BARBER` no puede listar customers ni gestionar barbers, services o user
+  accounts.
+- `RECEPTIONIST` puede operar clientes y citas dentro del tenant actual, pero
+  no gestionar user accounts.
+- `BRANCH_MANAGER` queda limitado por tenant/branch y no puede asignar roles
+  de owner.
+- `CUSTOMER` no puede usar endpoints administrativos.
 
 ## Customers
 

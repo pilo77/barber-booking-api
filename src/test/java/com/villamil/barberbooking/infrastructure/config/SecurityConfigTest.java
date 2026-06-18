@@ -70,6 +70,12 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void barberCannotListCustomers() throws Exception {
+		mockMvc.perform(get("/api/v1/customers").with(user("barber@example.com").roles("BARBER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
 	void protectedEndpointWithAllowedRoleReturnsOk() throws Exception {
 		when(listCustomersUseCase.list()).thenReturn(List.of(customer()));
 

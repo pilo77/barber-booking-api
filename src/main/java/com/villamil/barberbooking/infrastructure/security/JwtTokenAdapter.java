@@ -46,6 +46,7 @@ public class JwtTokenAdapter implements JwtTokenPort {
 				.claim("fullName", userAccount.fullName())
 				.claim("companyId", userAccount.companyId())
 				.claim("branchId", userAccount.branchId())
+				.claim("barberId", userAccount.barberId())
 				.claim("roles", userAccount.roles().stream().map(Role::name).toList())
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(expiresAt))
@@ -68,6 +69,7 @@ public class JwtTokenAdapter implements JwtTokenPort {
 		Long userId = claims.get("userId", Number.class).longValue();
 		Long companyId = numberClaim(claims, "companyId");
 		Long branchId = numberClaim(claims, "branchId");
+		Long barberId = numberClaim(claims, "barberId");
 		@SuppressWarnings("unchecked")
 		List<String> rawRoles = claims.get("roles", List.class);
 		Set<Role> roles = rawRoles.stream()
@@ -79,6 +81,7 @@ public class JwtTokenAdapter implements JwtTokenPort {
 				claims.get("fullName", String.class),
 				companyId,
 				branchId,
+				barberId,
 				roles
 		);
 	}

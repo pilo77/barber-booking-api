@@ -10,6 +10,7 @@ import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,10 +18,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.villamil.barberbooking.application.dto.response.AppointmentResponse;
+import com.villamil.barberbooking.application.dto.response.AuthenticatedUserResponse;
 import com.villamil.barberbooking.application.port.out.AppointmentRepositoryPort;
+import com.villamil.barberbooking.application.port.out.CurrentUserProvider;
 import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTransitionException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
+import com.villamil.barberbooking.domain.exception.ForbiddenOperationException;
 import com.villamil.barberbooking.domain.model.Appointment;
+import com.villamil.barberbooking.domain.model.Role;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
 
@@ -32,6 +37,9 @@ class AppointmentLifecycleServiceTest {
 
 	@Mock
 	private AppointmentRepositoryPort appointmentRepositoryPort;
+
+	@Mock
+	private CurrentUserProvider currentUserProvider;
 
 	@Test
 	void startScheduledAppointment() {
@@ -128,8 +136,54 @@ class AppointmentLifecycleServiceTest {
 				.hasMessage("Appointment not found");
 	}
 
+	@Test
+	void barberCanStartOwnAppointment() {
+		AppointmentLifecycleService service = securedService(barberUser(2L));
+		when(appointmentRepositoryPort.findById(1L))
+				.thenReturn(Optional.of(appointment(AppointmentStatus.SCHEDULED)));
+		when(appointmentRepositoryPort.save(any(Appointment.class)))
+				.thenAnswer(invocation -> invocation.getArgument(0));
+
+		AppointmentResponse response = service.start(1L);
+
+		assertThat(response.status()).isEqualTo(AppointmentStatus.IN_PROGRESS);
+	}
+
+	@Test
+	void barberCannotStartAnotherBarberAppointment() {
+		AppointmentLifecycleService service = securedService(barberUser(9L));
+		when(appointmentRepositoryPort.findById(1L))
+				.thenReturn(Optional.of(appointment(AppointmentStatus.SCHEDULED)));
+
+		assertThatThrownBy(() -> service.start(1L))
+				.isInstanceOf(ForbiddenOperationException.class)
+				.hasMessage("User cannot operate this appointment");
+		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
+	}
+
 	private AppointmentLifecycleService service() {
 		return new AppointmentLifecycleService(appointmentRepositoryPort);
+	}
+
+	private AppointmentLifecycleService securedService(AuthenticatedUserResponse actor) {
+		when(currentUserProvider.currentUser()).thenReturn(Optional.of(actor));
+		return new AppointmentLifecycleService(
+				appointmentRepositoryPort,
+				new CurrentUserResolver(currentUserProvider),
+				new UserAuthorizationPolicy()
+		);
+	}
+
+	private AuthenticatedUserResponse barberUser(Long barberId) {
+		return new AuthenticatedUserResponse(
+				10L,
+				"barber@example.com",
+				"Barber User",
+				1L,
+				1L,
+				barberId,
+				Set.of(Role.BARBER)
+		);
 	}
 
 	private Appointment appointment(AppointmentStatus status) {

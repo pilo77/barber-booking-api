@@ -26,6 +26,8 @@ Foundation inicial del proyecto:
 - Ciclo de vida de citas con transiciones controladas de estado.
 - Citas presenciales walk-in con inicio inmediato opcional.
 - Foundation Auth/RBAC con bootstrap, login JWT, roles y tenant desde token.
+- Authorization hardening con `barberId` en JWT y ownership para agenda,
+  dashboard, disponibilidad y citas propias de `BARBER`.
 
 ## Requisitos
 
@@ -114,6 +116,7 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 - HU-10: Citas presenciales walk-in.
 - HU-17: Multi-tenant foundation.
 - HU-18: Auth and RBAC foundation.
+- HU-19: Authorization hardening and ownership rules.
 
 ## Documentación
 

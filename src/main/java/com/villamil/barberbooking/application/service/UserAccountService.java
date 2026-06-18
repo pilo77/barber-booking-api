@@ -14,9 +14,12 @@ import com.villamil.barberbooking.application.port.in.CreateUserAccountUseCase;
 import com.villamil.barberbooking.application.port.in.DeactivateUserAccountUseCase;
 import com.villamil.barberbooking.application.port.in.GetUserAccountUseCase;
 import com.villamil.barberbooking.application.port.in.ListUserAccountsUseCase;
+import com.villamil.barberbooking.application.port.out.BarberRepositoryPort;
+import com.villamil.barberbooking.application.port.out.BranchRepositoryPort;
 import com.villamil.barberbooking.application.port.out.PasswordHasherPort;
 import com.villamil.barberbooking.application.port.out.UserAccountRepositoryPort;
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
+import com.villamil.barberbooking.domain.exception.ForbiddenOperationException;
 import com.villamil.barberbooking.domain.exception.UserAccountAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.UserAccountNotFoundException;
 import com.villamil.barberbooking.domain.model.Role;
@@ -31,17 +34,23 @@ class UserAccountService implements
 		DeactivateUserAccountUseCase {
 
 	private final UserAccountRepositoryPort userAccountRepositoryPort;
+	private final BranchRepositoryPort branchRepositoryPort;
+	private final BarberRepositoryPort barberRepositoryPort;
 	private final PasswordHasherPort passwordHasherPort;
 	private final CurrentUserResolver currentUserResolver;
 	private final UserAuthorizationPolicy userAuthorizationPolicy;
 
 	UserAccountService(
 			UserAccountRepositoryPort userAccountRepositoryPort,
+			BranchRepositoryPort branchRepositoryPort,
+			BarberRepositoryPort barberRepositoryPort,
 			PasswordHasherPort passwordHasherPort,
 			CurrentUserResolver currentUserResolver,
 			UserAuthorizationPolicy userAuthorizationPolicy
 	) {
 		this.userAccountRepositoryPort = userAccountRepositoryPort;
+		this.branchRepositoryPort = branchRepositoryPort;
+		this.barberRepositoryPort = barberRepositoryPort;
 		this.passwordHasherPort = passwordHasherPort;
 		this.currentUserResolver = currentUserResolver;
 		this.userAuthorizationPolicy = userAuthorizationPolicy;
@@ -58,13 +67,16 @@ class UserAccountService implements
 		if (userAccountRepositoryPort.existsByEmail(email)) {
 			throw new UserAccountAlreadyExistsException("User account email already exists");
 		}
+		Long targetBranchId = resolveTargetBranch(actor, command.branchId());
+		Long barberId = resolveBarberId(actor.companyId(), targetBranchId, roles, command.barberId());
 		UserAccount userAccount = UserAccount.create(
 				actor.companyId(),
-				actor.branchId(),
+				targetBranchId,
 				email,
 				passwordHasherPort.hash(command.password()),
 				command.fullName(),
 				command.phone(),
+				barberId,
 				roles
 		);
 		return UserAccountResponse.from(userAccountRepositoryPort.save(userAccount));
@@ -126,6 +138,39 @@ class UserAccountService implements
 			throw new BusinessRuleException("Requested role is not assignable from this endpoint");
 		}
 		return Set.copyOf(roles);
+	}
+
+	private Long resolveTargetBranch(AuthenticatedUserResponse actor, Long requestedBranchId) {
+		if (actor.companyId() == null || actor.branchId() == null) {
+			throw new BusinessRuleException("User creation requires an assigned company and branch");
+		}
+		Long targetBranchId = requestedBranchId == null ? actor.branchId() : requestedBranchId;
+		if (actor.roles().contains(Role.BRANCH_MANAGER) && !actor.branchId().equals(targetBranchId)) {
+			throw new ForbiddenOperationException("Branch manager cannot create users outside current branch");
+		}
+		if (!branchRepositoryPort.existsByIdAndCompanyId(targetBranchId, actor.companyId())) {
+			throw new BusinessRuleException("Branch does not belong to current company");
+		}
+		return targetBranchId;
+	}
+
+	private Long resolveBarberId(Long companyId, Long branchId, Set<Role> roles, Long barberId) {
+		if (!roles.contains(Role.BARBER)) {
+			if (barberId != null) {
+				throw new BusinessRuleException("Barber id can only be assigned to BARBER users");
+			}
+			return null;
+		}
+		if (barberId == null) {
+			throw new BusinessRuleException("BARBER users require barberId");
+		}
+		if (userAccountRepositoryPort.existsByBarberId(barberId)) {
+			throw new BusinessRuleException("Barber is already linked to another user account");
+		}
+		if (!barberRepositoryPort.existsByIdAndCompanyIdAndBranchId(barberId, companyId, branchId)) {
+			throw new BusinessRuleException("Barber does not belong to target company and branch");
+		}
+		return barberId;
 	}
 
 	private String normalizeEmail(String email) {

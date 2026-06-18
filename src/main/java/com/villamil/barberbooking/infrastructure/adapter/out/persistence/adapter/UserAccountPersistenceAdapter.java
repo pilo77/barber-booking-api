@@ -42,6 +42,11 @@ public class UserAccountPersistenceAdapter implements UserAccountRepositoryPort 
 	}
 
 	@Override
+	public boolean existsByBarberId(Long barberId) {
+		return userAccountJpaRepository.existsByBarberId(barberId);
+	}
+
+	@Override
 	public Optional<UserAccount> findByEmail(String email) {
 		return userAccountJpaRepository.findByEmail(email)
 				.map(userAccountPersistenceMapper::toDomain);

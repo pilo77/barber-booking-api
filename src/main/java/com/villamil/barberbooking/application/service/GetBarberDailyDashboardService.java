@@ -39,6 +39,8 @@ class GetBarberDailyDashboardService implements GetBarberDailyDashboardUseCase {
 	private final AppointmentRepositoryPort appointmentRepositoryPort;
 	private final CustomerRepositoryPort customerRepositoryPort;
 	private final ServiceOfferingRepositoryPort serviceOfferingRepositoryPort;
+	private final CurrentUserResolver currentUserResolver;
+	private final UserAuthorizationPolicy userAuthorizationPolicy;
 	private final Clock clock;
 
 	@Autowired
@@ -46,13 +48,17 @@ class GetBarberDailyDashboardService implements GetBarberDailyDashboardUseCase {
 			BarberRepositoryPort barberRepositoryPort,
 			AppointmentRepositoryPort appointmentRepositoryPort,
 			CustomerRepositoryPort customerRepositoryPort,
-			ServiceOfferingRepositoryPort serviceOfferingRepositoryPort
+			ServiceOfferingRepositoryPort serviceOfferingRepositoryPort,
+			CurrentUserResolver currentUserResolver,
+			UserAuthorizationPolicy userAuthorizationPolicy
 	) {
 		this(
 				barberRepositoryPort,
 				appointmentRepositoryPort,
 				customerRepositoryPort,
 				serviceOfferingRepositoryPort,
+				currentUserResolver,
+				userAuthorizationPolicy,
 				Clock.systemDefaultZone()
 		);
 	}
@@ -64,16 +70,44 @@ class GetBarberDailyDashboardService implements GetBarberDailyDashboardUseCase {
 			ServiceOfferingRepositoryPort serviceOfferingRepositoryPort,
 			Clock clock
 	) {
+		this(
+				barberRepositoryPort,
+				appointmentRepositoryPort,
+				customerRepositoryPort,
+				serviceOfferingRepositoryPort,
+				null,
+				null,
+				clock
+		);
+	}
+
+	GetBarberDailyDashboardService(
+			BarberRepositoryPort barberRepositoryPort,
+			AppointmentRepositoryPort appointmentRepositoryPort,
+			CustomerRepositoryPort customerRepositoryPort,
+			ServiceOfferingRepositoryPort serviceOfferingRepositoryPort,
+			CurrentUserResolver currentUserResolver,
+			UserAuthorizationPolicy userAuthorizationPolicy,
+			Clock clock
+	) {
 		this.barberRepositoryPort = barberRepositoryPort;
 		this.appointmentRepositoryPort = appointmentRepositoryPort;
 		this.customerRepositoryPort = customerRepositoryPort;
 		this.serviceOfferingRepositoryPort = serviceOfferingRepositoryPort;
+		this.currentUserResolver = currentUserResolver;
+		this.userAuthorizationPolicy = userAuthorizationPolicy;
 		this.clock = clock;
 	}
 
 	@Override
 	@Transactional(readOnly = true)
 	public BarberDailyDashboardResponse getDailyDashboard(GetBarberDailyDashboardCommand command) {
+		if (currentUserResolver != null) {
+			userAuthorizationPolicy.ensureCanAccessBarberSchedule(
+					currentUserResolver.requireCurrentUser(),
+					command.barberId()
+			);
+		}
 		Barber barber = barberRepositoryPort.findById(command.barberId())
 				.orElseThrow(() -> new BarberNotFoundException("Barber not found"));
 

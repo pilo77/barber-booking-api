@@ -140,7 +140,12 @@ Pendiente para futuras HUs:
 Endurecer autorizacion por ownership y operacion antes de construir perfil
 publico, caja, pagos o inventario.
 
-Alcance recomendado:
+Estado actual: implementada en rama de HU-19. Agrega vinculo
+`user_accounts.barber_id`, `barberId` en JWT/me, validaciones de creacion de
+usuarios BARBER y restricciones para que `BARBER` solo opere agenda,
+dashboard, availability y citas propias.
+
+Alcance implementado:
 
 - Definir matriz de permisos por rol, metodo HTTP, recurso y operacion.
 - Crear relacion formal `user_account -> barber`.
@@ -149,9 +154,14 @@ Alcance recomendado:
 - Limitar `RECEPTIONIST` a clientes, citas, walk-ins y disponibilidad segun
   permisos operativos.
 - Restringir acceso amplio a modulos que cada rol no necesita.
+- Cubrir con tests negativos entre usuarios, branch y company.
+
+Pendiente para hardening posterior:
+
 - Agregar claims y validacion de issuer, audience y `jti` al JWT.
 - Agregar auditoria persistente de acciones sensibles.
-- Cubrir con tests negativos entre usuarios, branch y company.
+- Definir permisos finos para caja, pagos e inventario cuando esos modulos
+  existan.
 
 ### HU-20 Barber public profile
 

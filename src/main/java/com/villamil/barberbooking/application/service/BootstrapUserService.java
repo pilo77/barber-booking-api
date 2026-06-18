@@ -53,6 +53,7 @@ class BootstrapUserService implements BootstrapUserUseCase {
 				passwordHasherPort.hash(command.password()),
 				command.fullName(),
 				null,
+				null,
 				Set.of(Role.COMPANY_OWNER)
 		);
 		return UserAccountResponse.from(userAccountRepositoryPort.save(userAccount));

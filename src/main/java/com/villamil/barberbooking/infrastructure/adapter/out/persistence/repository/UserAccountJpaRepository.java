@@ -11,6 +11,8 @@ public interface UserAccountJpaRepository extends JpaRepository<UserAccountJpaEn
 
 	boolean existsByEmail(String email);
 
+	boolean existsByBarberId(Long barberId);
+
 	Optional<UserAccountJpaEntity> findByEmail(String email);
 
 	List<UserAccountJpaEntity> findAllByCompanyIdOrderByIdAsc(Long companyId);

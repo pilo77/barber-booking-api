@@ -47,6 +47,7 @@ class BootstrapUserServiceTest {
 					user.passwordHash(),
 					user.fullName(),
 					user.phone(),
+					user.barberId(),
 					user.active(),
 					Instant.parse("2026-06-18T12:00:00Z"),
 					Instant.parse("2026-06-18T12:00:00Z"),

@@ -8,6 +8,7 @@ import com.villamil.barberbooking.domain.model.Role;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 public record CreateUserAccountRequest(
@@ -27,11 +28,17 @@ public record CreateUserAccountRequest(
 		@Size(max = 30, message = "Phone must be at most 30 characters")
 		String phone,
 
+		@Positive(message = "Branch id must be positive")
+		Long branchId,
+
+		@Positive(message = "Barber id must be positive")
+		Long barberId,
+
 		@NotEmpty(message = "At least one role is required")
 		Set<Role> roles
 ) {
 
 	public CreateUserAccountCommand toCommand() {
-		return new CreateUserAccountCommand(email, password, fullName, phone, roles);
+		return new CreateUserAccountCommand(email, password, fullName, phone, branchId, barberId, roles);
 	}
 }

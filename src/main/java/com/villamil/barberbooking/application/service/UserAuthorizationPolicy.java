@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import com.villamil.barberbooking.application.dto.response.AuthenticatedUserResponse;
 import com.villamil.barberbooking.domain.exception.ForbiddenOperationException;
+import com.villamil.barberbooking.domain.model.Appointment;
 import com.villamil.barberbooking.domain.model.Role;
 import com.villamil.barberbooking.domain.model.UserAccount;
 
@@ -36,6 +37,38 @@ class UserAuthorizationPolicy {
 			return;
 		}
 		throw new ForbiddenOperationException("User role cannot assign requested roles");
+	}
+
+	void ensureCanAccessBarberSchedule(AuthenticatedUserResponse actor, Long barberId) {
+		if (hasAnyRole(actor, Role.PLATFORM_OWNER, Role.COMPANY_OWNER, Role.BRANCH_MANAGER, Role.RECEPTIONIST)) {
+			return;
+		}
+		if (actor.roles().contains(Role.BARBER) && actor.barberId() != null && actor.barberId().equals(barberId)) {
+			return;
+		}
+		throw new ForbiddenOperationException("User cannot access this barber schedule");
+	}
+
+	void ensureCanCreateAppointmentForBarber(AuthenticatedUserResponse actor, Long barberId) {
+		if (hasAnyRole(actor, Role.PLATFORM_OWNER, Role.COMPANY_OWNER, Role.BRANCH_MANAGER, Role.RECEPTIONIST)) {
+			return;
+		}
+		if (actor.roles().contains(Role.BARBER) && actor.barberId() != null && actor.barberId().equals(barberId)) {
+			return;
+		}
+		throw new ForbiddenOperationException("User cannot create appointments for this barber");
+	}
+
+	void ensureCanOperateAppointment(AuthenticatedUserResponse actor, Appointment appointment) {
+		if (hasAnyRole(actor, Role.PLATFORM_OWNER, Role.COMPANY_OWNER, Role.BRANCH_MANAGER, Role.RECEPTIONIST)) {
+			return;
+		}
+		if (actor.roles().contains(Role.BARBER)
+				&& actor.barberId() != null
+				&& actor.barberId().equals(appointment.barberId())) {
+			return;
+		}
+		throw new ForbiddenOperationException("User cannot operate this appointment");
 	}
 
 	void ensureCanAccessUser(AuthenticatedUserResponse actor, UserAccount target) {

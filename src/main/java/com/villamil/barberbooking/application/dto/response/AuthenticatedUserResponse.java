@@ -11,6 +11,7 @@ public record AuthenticatedUserResponse(
 		String fullName,
 		Long companyId,
 		Long branchId,
+		Long barberId,
 		Set<Role> roles
 ) {
 
@@ -21,6 +22,7 @@ public record AuthenticatedUserResponse(
 				userAccount.fullName(),
 				userAccount.companyId(),
 				userAccount.branchId(),
+				userAccount.barberId(),
 				userAccount.roles()
 		);
 	}

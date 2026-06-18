@@ -13,6 +13,7 @@ public record UserAccount(
 		String passwordHash,
 		String fullName,
 		String phone,
+		Long barberId,
 		boolean active,
 		Instant createdAt,
 		Instant updatedAt,
@@ -26,12 +27,19 @@ public record UserAccount(
 		passwordHash = requireText(passwordHash, "Password hash is required");
 		fullName = requireText(fullName, "User full name is required");
 		phone = normalizeOptionalText(phone);
+		validateId(barberId, "Barber id");
 		createdAt = createdAt == null ? Instant.now() : createdAt;
 		updatedAt = updatedAt == null ? createdAt : updatedAt;
 		if (roles == null || roles.isEmpty()) {
 			throw new BusinessRuleException("At least one role is required");
 		}
 		roles = Set.copyOf(roles);
+		if (barberId != null && (companyId == null || branchId == null)) {
+			throw new BusinessRuleException("Barber id requires assigned company and branch");
+		}
+		if (roles.contains(Role.BARBER) && barberId == null) {
+			throw new BusinessRuleException("Barber role requires barber id");
+		}
 	}
 
 	public static UserAccount create(
@@ -41,24 +49,25 @@ public record UserAccount(
 			String passwordHash,
 			String fullName,
 			String phone,
+			Long barberId,
 			Set<Role> roles
 	) {
 		Instant now = Instant.now();
-		return new UserAccount(null, companyId, branchId, email, passwordHash, fullName, phone, true, now, now, roles);
+		return new UserAccount(null, companyId, branchId, email, passwordHash, fullName, phone, barberId, true, now, now, roles);
 	}
 
 	public UserAccount activate() {
 		if (active) {
 			return this;
 		}
-		return new UserAccount(id, companyId, branchId, email, passwordHash, fullName, phone, true, createdAt, Instant.now(), roles);
+		return new UserAccount(id, companyId, branchId, email, passwordHash, fullName, phone, barberId, true, createdAt, Instant.now(), roles);
 	}
 
 	public UserAccount deactivate() {
 		if (!active) {
 			return this;
 		}
-		return new UserAccount(id, companyId, branchId, email, passwordHash, fullName, phone, false, createdAt, Instant.now(), roles);
+		return new UserAccount(id, companyId, branchId, email, passwordHash, fullName, phone, barberId, false, createdAt, Instant.now(), roles);
 	}
 
 	public boolean hasRole(Role role) {

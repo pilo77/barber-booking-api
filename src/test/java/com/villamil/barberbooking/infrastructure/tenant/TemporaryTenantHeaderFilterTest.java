@@ -66,6 +66,7 @@ class TemporaryTenantHeaderFilterTest {
 				"Owner User",
 				7L,
 				8L,
+				null,
 				Set.of(Role.COMPANY_OWNER)
 		);
 		AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
@@ -93,6 +94,7 @@ class TemporaryTenantHeaderFilterTest {
 				9L,
 				"platform@example.com",
 				"Platform User",
+				null,
 				null,
 				null,
 				Set.of(Role.PLATFORM_OWNER)

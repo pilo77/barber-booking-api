@@ -47,6 +47,9 @@ public class UserAccountJpaEntity {
 	@Column(name = "phone", length = 30)
 	private String phone;
 
+	@Column(name = "barber_id")
+	private Long barberId;
+
 	@Column(name = "active", nullable = false)
 	private boolean active;
 
@@ -76,6 +79,7 @@ public class UserAccountJpaEntity {
 			String passwordHash,
 			String fullName,
 			String phone,
+			Long barberId,
 			boolean active,
 			Instant createdAt,
 			Instant updatedAt,
@@ -88,6 +92,7 @@ public class UserAccountJpaEntity {
 		this.passwordHash = passwordHash;
 		this.fullName = fullName;
 		this.phone = phone;
+		this.barberId = barberId;
 		this.active = active;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
@@ -136,6 +141,10 @@ public class UserAccountJpaEntity {
 
 	public String getPhone() {
 		return phone;
+	}
+
+	public Long getBarberId() {
+		return barberId;
 	}
 
 	public boolean isActive() {

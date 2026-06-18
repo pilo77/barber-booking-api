@@ -73,6 +73,11 @@ public class BarberPersistenceAdapter implements BarberRepositoryPort {
 	}
 
 	@Override
+	public boolean existsByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId) {
+		return barberJpaRepository.existsByIdAndCompanyIdAndBranchId(id, companyId, branchId);
+	}
+
+	@Override
 	public boolean existsByPhoneAndIdNot(String phone, Long id) {
 		TenantContext tenantContext = tenantContextProvider.currentTenant();
 		return barberJpaRepository.existsByCompanyIdAndPhoneAndIdNot(tenantContext.companyId(), phone, id);

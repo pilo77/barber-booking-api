@@ -13,6 +13,8 @@ public interface UserAccountRepositoryPort {
 
 	boolean existsByEmail(String email);
 
+	boolean existsByBarberId(Long barberId);
+
 	Optional<UserAccount> findByEmail(String email);
 
 	Optional<UserAccount> findById(Long id);

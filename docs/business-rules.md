@@ -22,14 +22,13 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
   hay usuario autenticado.
 - Si existe JWT valido, los headers no pueden sobrescribir el tenant del
   usuario.
-- HU-18 implementa RBAC base por rol/path. No implementa todavia autorizacion
-  fina por ownership de cada recurso.
-- La siguiente HU obligatoria de seguridad es `HU-19: Authorization hardening
-  and ownership rules`, antes de perfil publico, reservas por slug, caja, pagos
-  o inventario.
+- HU-19 agrega hardening de autorizacion por ownership para agenda,
+  dashboard, availability, lifecycle de citas y user accounts.
 - Los casos de uso deben consultar recursos dentro del tenant actual. Si un
   cliente, barbero, servicio u appointment existe en otra company/branch, debe
   tratarse como no encontrado para el tenant actual.
+- Los usuarios con rol `BARBER` deben estar vinculados a un `barberId`. Sin
+  ese vinculo no pueden operar agenda propia.
 - La disponibilidad y el dashboard diario no deben mezclar citas de otra
   company o branch.
 - Los nombres de servicios solo son unicos dentro de la misma company.
@@ -40,23 +39,33 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
   SaaS y debe auditarse antes de uso operativo amplio.
 - `COMPANY_OWNER`: administra usuarios y operacion de su tenant.
 - `BRANCH_MANAGER`: consulta usuarios de su branch y opera la sucursal.
-- `RECEPTIONIST`: gestiona clientes, citas, walk-ins y disponibilidad.
-- `BARBER`: acceso operativo minimo a agenda/citas; la relacion user-barber se
-  refinara en una HU futura.
+- `RECEPTIONIST`: gestiona clientes, citas, walk-ins y disponibilidad dentro
+  del tenant actual. No gestiona usuarios ni roles.
+- `BARBER`: consulta su agenda, dashboard y disponibilidad propia; puede
+  iniciar, completar, cancelar o marcar no-show solo en sus propias citas.
 - `CASHIER`, `ACCOUNTANT`, `INVENTORY_MANAGER`: reservados para caja, reportes e
   inventario futuros; no reciben acceso administrativo amplio todavia.
 - `CUSTOMER`: reservado para portal publico/futuro; no puede usar endpoints
   administrativos actuales.
 
-### Pendientes de authorization hardening
+### Authorization hardening
 
-- Crear relacion formal `user_account -> barber`.
-- Limitar `BARBER` a su propia agenda, dashboard y citas asignadas.
-- Limitar `BRANCH_MANAGER` a operaciones de su branch.
-- Limitar `RECEPTIONIST` segun permisos operativos concretos.
-- Evitar acceso amplio a modulos no necesarios por rol.
+- Existe relacion formal `user_accounts.barber_id -> barbers`.
+- Un `barberId` solo puede vincularse a un usuario y debe pertenecer a la misma
+  company/branch.
+- `BARBER` no puede ver agenda ni dashboard de otro barbero.
+- `BARBER` no puede operar citas de otro barbero.
+- `BARBER` no puede gestionar customers, barbers, services ni user accounts.
+- `CUSTOMER` no puede usar endpoints administrativos actuales.
+- Roles `CASHIER`, `ACCOUNTANT` e `INVENTORY_MANAGER` quedan reservados para
+  modulos futuros y no deben recibir acceso operativo amplio todavia.
+
+Pendientes:
+
 - Agregar issuer, audience y `jti` al JWT antes de produccion.
 - Registrar auditoria persistente de acciones sensibles.
+- Gestion multi-branch completa para `COMPANY_OWNER` requiere endpoints de
+  administracion de branches.
 
 ## Reglas de disponibilidad
 

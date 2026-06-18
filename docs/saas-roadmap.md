@@ -167,12 +167,26 @@ Pendiente para hardening posterior:
 
 Exponer perfil publico de barberia/sucursal/barbero para reserva online.
 
-Alcance recomendado:
+Estado actual: implementada en rama de HU-20. Agrega endpoints publicos de
+solo lectura para consultar company/barberia, branches, services visibles y
+barbers visibles por slug, sin requerir JWT.
 
-- Slug publico por company/branch/barber.
-- Servicios disponibles.
-- Horarios publicos.
-- Reglas de visibilidad y datos no sensibles.
+Alcance implementado:
+
+- Perfil publico por `companySlug`.
+- Sedes publicas por `companySlug`.
+- Sede publica por `companySlug + branchSlug` para evitar colisiones de slug.
+- Servicios activos y visibles para booking online.
+- Barberos activos y visibles para booking online.
+- Campos publicos opcionales para logo, descripcion, foto, bio y ordenamiento.
+- Proteccion para no exponer datos sensibles ni ids de tenant.
+
+Fuera de alcance:
+
+- Crear citas publicas.
+- Portal de cliente.
+- Ratings.
+- Pagos, caja e inventario.
 
 ### HU-21 Online booking barber selection
 

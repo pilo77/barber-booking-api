@@ -12,6 +12,11 @@ public interface BarberJpaRepository extends JpaRepository<BarberJpaEntity, Long
 
 	List<BarberJpaEntity> findAllByCompanyIdAndBranchIdOrderByIdAsc(Long companyId, Long branchId);
 
+	List<BarberJpaEntity> findAllByCompanyIdAndBranchIdAndActiveTrueAndActiveForOnlineBookingTrueOrderBySortOrderAscIdAsc(
+			Long companyId,
+			Long branchId
+	);
+
 	boolean existsByCompanyIdAndPhone(Long companyId, String phone);
 
 	boolean existsByCompanyIdAndEmail(Long companyId, String email);

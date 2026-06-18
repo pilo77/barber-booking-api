@@ -12,6 +12,8 @@ public interface ServiceOfferingJpaRepository extends JpaRepository<ServiceOffer
 
 	List<ServiceOfferingJpaEntity> findAllByCompanyIdOrderByIdAsc(Long companyId);
 
+	List<ServiceOfferingJpaEntity> findAllByCompanyIdAndActiveTrueAndVisibleForOnlineBookingTrueOrderBySortOrderAscIdAsc(Long companyId);
+
 	boolean existsByCompanyIdAndName(Long companyId, String name);
 
 	boolean existsByCompanyIdAndNameAndIdNot(Long companyId, String name, Long id);

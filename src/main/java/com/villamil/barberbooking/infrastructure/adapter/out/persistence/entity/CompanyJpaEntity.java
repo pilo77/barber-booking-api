@@ -25,6 +25,12 @@ public class CompanyJpaEntity {
 	@Column(name = "slug", nullable = false, length = 120)
 	private String slug;
 
+	@Column(name = "logo_url", length = 500)
+	private String logoUrl;
+
+	@Column(name = "description", length = 500)
+	private String description;
+
 	@Column(name = "active", nullable = false)
 	private boolean active;
 
@@ -35,6 +41,38 @@ public class CompanyJpaEntity {
 	private Instant updatedAt;
 
 	protected CompanyJpaEntity() {
+	}
+
+	public Long getId() {
+		return id;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public String getSlug() {
+		return slug;
+	}
+
+	public String getLogoUrl() {
+		return logoUrl;
+	}
+
+	public String getDescription() {
+		return description;
+	}
+
+	public boolean isActive() {
+		return active;
+	}
+
+	public Instant getCreatedAt() {
+		return createdAt;
+	}
+
+	public Instant getUpdatedAt() {
+		return updatedAt;
 	}
 
 	@PrePersist

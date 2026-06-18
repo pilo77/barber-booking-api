@@ -131,7 +131,7 @@ class PublicBookingServiceTest {
 
 	@Test
 	void publicBookingReusesCustomerAndCreatesScheduledOnlineAppointment() {
-		Customer customer = customer(5L);
+		Customer customer = customer(5L, "Stored Private Name");
 		Appointment unsaved = appointment(null);
 		Appointment saved = appointment(10L);
 		executeTenantActions();
@@ -149,12 +149,13 @@ class PublicBookingServiceTest {
 		assertThat(response.status()).isEqualTo(AppointmentStatus.SCHEDULED);
 		assertThat(response.endAt()).isEqualTo(START_AT.plusMinutes(30));
 		assertThat(response.customer().phone()).isEqualTo("3001234567");
+		assertThat(response.customer().fullName()).isEqualTo("Carlos Villamil");
 		verify(customerRepositoryPort, never()).save(any());
 	}
 
 	@Test
 	void publicBookingCreatesCustomerInsideResolvedCompanyWhenPhoneIsNew() {
-		Customer savedCustomer = customer(5L);
+		Customer savedCustomer = customer(5L, "Carlos Villamil");
 		Appointment unsaved = appointment(null);
 		executeTenantActions();
 		mockPublicResources();
@@ -199,7 +200,7 @@ class PublicBookingServiceTest {
 
 	@Test
 	void workingHoursAndOverlapFailuresArePreservedForPublicBooking() {
-		Customer customer = customer(5L);
+		Customer customer = customer(5L, "Carlos Villamil");
 		executeTenantActions();
 		mockPublicResources();
 		when(customerRepositoryPort.findByPhone("3001234567")).thenReturn(Optional.of(customer));
@@ -251,10 +252,10 @@ class PublicBookingServiceTest {
 		return new PublicBarberResponse(2L, "Santiago", null, null, null);
 	}
 
-	private Customer customer(Long id) {
+	private Customer customer(Long id, String fullName) {
 		return new Customer(
 				id,
-				"Carlos Villamil",
+				fullName,
 				"3001234567",
 				"cliente@example.com",
 				true,

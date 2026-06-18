@@ -4,7 +4,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.villamil.barberbooking.domain.model.Appointment;
-import com.villamil.barberbooking.domain.model.Customer;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
 
@@ -23,7 +22,8 @@ public record PublicAppointmentResponse(
 			Appointment appointment,
 			PublicServiceOfferingResponse service,
 			PublicBarberResponse barber,
-			Customer customer
+			String customerFullName,
+			String customerPhone
 	) {
 		return new PublicAppointmentResponse(
 				appointment.id(),
@@ -33,7 +33,7 @@ public record PublicAppointmentResponse(
 				appointment.endAt(),
 				new ServiceSummary(service.id(), service.name(), service.durationMinutes(), service.price()),
 				new BarberSummary(barber.id(), barber.displayName(), barber.photoUrl()),
-				new CustomerSummary(customer.fullName(), customer.phone())
+				new CustomerSummary(customerFullName, customerPhone)
 		);
 	}
 

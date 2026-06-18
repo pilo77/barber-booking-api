@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.villamil.barberbooking.application.dto.command.CreatePublicAppointmentCommand;
 import com.villamil.barberbooking.application.dto.command.GetBarberAvailabilityCommand;
-import com.villamil.barberbooking.application.dto.command.PublicCustomerCommand;
 import com.villamil.barberbooking.application.dto.response.BarberAvailabilityResponse;
 import com.villamil.barberbooking.application.dto.response.PublicAppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberResponse;
@@ -78,9 +77,14 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 		PublicTenantContext tenant = resolveTenant(command.companySlug(), command.branchSlug());
 		PublicServiceOfferingResponse service = requireVisibleService(tenant, command.serviceOfferingId());
 		PublicBarberResponse barber = requireVisibleBarber(tenant, command.barberId());
+		Customer requestedCustomer = Customer.create(
+				command.customer().fullName(),
+				command.customer().phone(),
+				command.customer().email()
+		);
 
 		return tenantContextExecutor.withTenant(tenant.toTenantContext(), () -> {
-			Customer customer = findOrCreateCustomer(command.customer());
+			Customer customer = findOrCreateCustomer(requestedCustomer);
 			Appointment appointment = appointmentBookingPolicy.createValidatedAppointment(
 					customer.id(),
 					command.barberId(),
@@ -93,7 +97,8 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 					appointmentRepositoryPort.save(appointment),
 					service,
 					barber,
-					customer
+					requestedCustomer.fullName(),
+					requestedCustomer.phone()
 			);
 		});
 	}
@@ -120,8 +125,7 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 				.orElseThrow(() -> new PublicResourceNotFoundException("Public barber not found"));
 	}
 
-	private Customer findOrCreateCustomer(PublicCustomerCommand command) {
-		Customer candidate = Customer.create(command.fullName(), command.phone(), command.email());
+	private Customer findOrCreateCustomer(Customer candidate) {
 		return customerRepositoryPort.findByPhone(candidate.phone())
 				.map(customer -> {
 					if (!customer.active()) {

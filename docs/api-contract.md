@@ -272,7 +272,9 @@ Reglas:
 - Service debe pertenecer a la company, estar activo y visible online.
 - Barber debe pertenecer a esa company/branch, estar activo y visible online.
 - Customer se busca por `company + phone`; se reutiliza si esta activo o se
-  crea dentro de la company. El cliente publico nunca envia `customerId`.
+  crea dentro de la company. El cliente publico nunca envia `customerId` y la
+  respuesta refleja los datos basicos enviados, sin revelar datos almacenados
+  de un customer preexistente.
 - Se reutilizan horarios laborales, estados bloqueantes y regla de solape de
   `AppointmentBookingPolicy`.
 - Recurso no publicable: `404`. Horario invalido, solape o recurso interno
@@ -280,6 +282,8 @@ Reglas:
 - No hay pagos, cancelacion publica ni reprogramacion publica en HU-21.
 - Los servicios siguen siendo company-wide. El catalogo por sede requiere una
   relacion futura `branch_services`.
+- Dos solicitudes concurrentes para crear el mismo `company + phone` pueden
+  competir por la restriccion unica; una puede finalizar en `409 Conflict`.
 
 ## User Accounts
 

@@ -102,6 +102,9 @@ Pendientes:
   visible online.
 - El customer se busca por telefono dentro de la company. Si existe y esta
   activo se reutiliza; si no existe se crea. No se acepta `customerId` publico.
+- La respuesta usa nombre y telefono normalizados del request; nunca devuelve
+  datos almacenados del customer para indicar directa o indirectamente si ya
+  existia.
 - Toda cita publica se crea con `source = ONLINE` y `status = SCHEDULED`.
 - `startAt` debe ser futuro; `endAt` se calcula en backend.
 - Horarios laborales, solapes y estados bloqueantes se validan mediante la
@@ -109,6 +112,8 @@ Pendientes:
 - No se exponen credenciales, ids internos de tenant, roles ni datos de otros
   clientes.
 - HU-21 no incluye pagos, cancelacion publica ni reprogramacion publica.
+- La creacion concurrente del mismo `company + phone` puede producir un
+  `409 Conflict` por la restriccion unica y queda como deuda tecnica conocida.
 
 ## Reglas de disponibilidad
 

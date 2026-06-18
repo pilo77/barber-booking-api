@@ -19,6 +19,7 @@ import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTrans
 import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
+import com.villamil.barberbooking.domain.exception.AuthenticationFailedException;
 import com.villamil.barberbooking.domain.exception.BarberAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
 import com.villamil.barberbooking.domain.exception.BarberWorkingHourNotFoundException;
@@ -26,9 +27,12 @@ import com.villamil.barberbooking.domain.exception.BarberWorkingHourOverlapExcep
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.exception.CustomerAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
+import com.villamil.barberbooking.domain.exception.ForbiddenOperationException;
 import com.villamil.barberbooking.domain.exception.ResourceInactiveException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingNotFoundException;
+import com.villamil.barberbooking.domain.exception.UserAccountAlreadyExistsException;
+import com.villamil.barberbooking.domain.exception.UserAccountNotFoundException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -38,6 +42,16 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(AppointmentNotFoundException.class)
 	public ResponseEntity<ProblemDetail> handleAppointmentNotFound(AppointmentNotFoundException exception, HttpServletRequest request) {
 		return problem(HttpStatus.NOT_FOUND, "Appointment not found", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(AuthenticationFailedException.class)
+	public ResponseEntity<ProblemDetail> handleAuthenticationFailed(AuthenticationFailedException exception, HttpServletRequest request) {
+		return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(ForbiddenOperationException.class)
+	public ResponseEntity<ProblemDetail> handleForbidden(ForbiddenOperationException exception, HttpServletRequest request) {
+		return problem(HttpStatus.FORBIDDEN, "Forbidden", exception.getMessage(), request, exception);
 	}
 
 	@ExceptionHandler(AppointmentNotAvailableException.class)
@@ -108,6 +122,16 @@ public class GlobalExceptionHandler {
 			HttpServletRequest request
 	) {
 		return problem(HttpStatus.CONFLICT, "Service offering already exists", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(UserAccountNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handleUserAccountNotFound(UserAccountNotFoundException exception, HttpServletRequest request) {
+		return problem(HttpStatus.NOT_FOUND, "User account not found", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(UserAccountAlreadyExistsException.class)
+	public ResponseEntity<ProblemDetail> handleUserAccountAlreadyExists(UserAccountAlreadyExistsException exception, HttpServletRequest request) {
+		return problem(HttpStatus.CONFLICT, "User account already exists", exception.getMessage(), request, exception);
 	}
 
 	@ExceptionHandler(ResourceInactiveException.class)

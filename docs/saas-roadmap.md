@@ -104,14 +104,25 @@ Alcance recomendado:
 
 Agregar autenticacion y autorizacion por roles.
 
-Alcance recomendado:
+Estado actual: foundation implementada en rama de HU-18. Incluye bootstrap del
+primer usuario, login JWT, `GET /auth/me`, usuarios internos minimos, roles y
+tenant desde JWT para endpoints administrativos.
 
-- Modelo `User`, `Role` y asignacion por company/branch.
-- Login seguro.
-- Hash de passwords si la API gestiona credenciales propias.
+Alcance implementado:
+
+- Modelo `UserAccount` y `Role`.
+- Login seguro con JWT.
+- Passwords con BCrypt.
 - Guards por endpoint y caso de uso.
-- Auditoria minima de acciones sensibles.
-- No imprimir tokens ni credenciales en logs.
+- Headers de tenant quedan solo como fallback si no hay usuario autenticado.
+- No se imprimen tokens ni credenciales en logs.
+
+Pendiente para futuras HUs:
+
+- Relacion user-barber para limitar dashboard/agenda del rol `BARBER`.
+- Auditoria persistente de acciones sensibles.
+- Gestion completa multi-branch para `COMPANY_OWNER`.
+- Roles de caja, contabilidad e inventario cuando existan esos modulos.
 
 ### HU-19 Barber public profile
 

@@ -9,7 +9,7 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
 - Las operaciones y validaciones deben comprobar `active=true` para considerar
   recursos como disponibles.
 
-## Multi-tenant
+## Multi-tenant and Auth/RBAC
 
 - `Company` representa la barberia/empresa propietaria de los datos.
 - `Branch` representa una sede de una company.
@@ -17,14 +17,31 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
 - `Barber`, `BarberWorkingHour` y `Appointment` pertenecen a una company y una
   branch.
 - Ningun request body debe enviar `companyId` ni `branchId`.
-- Hasta HU-18, el tenant se resuelve con headers temporales
-  `X-Company-Id` y `X-Branch-Id`; si no existen, se usa el tenant default.
+- Desde HU-18, en endpoints administrativos el tenant se resuelve primero desde
+  JWT. Los headers temporales `X-Company-Id` y `X-Branch-Id` solo aplican si no
+  hay usuario autenticado.
+- Si existe JWT valido, los headers no pueden sobrescribir el tenant del
+  usuario.
 - Los casos de uso deben consultar recursos dentro del tenant actual. Si un
   cliente, barbero, servicio u appointment existe en otra company/branch, debe
   tratarse como no encontrado para el tenant actual.
 - La disponibilidad y el dashboard diario no deben mezclar citas de otra
   company o branch.
 - Los nombres de servicios solo son unicos dentro de la misma company.
+
+## Roles
+
+- `PLATFORM_OWNER`: rol global de plataforma. Queda reservado para administracion
+  SaaS y debe auditarse antes de uso operativo amplio.
+- `COMPANY_OWNER`: administra usuarios y operacion de su tenant.
+- `BRANCH_MANAGER`: consulta usuarios de su branch y opera la sucursal.
+- `RECEPTIONIST`: gestiona clientes, citas, walk-ins y disponibilidad.
+- `BARBER`: acceso operativo minimo a agenda/citas; la relacion user-barber se
+  refinara en una HU futura.
+- `CASHIER`, `ACCOUNTANT`, `INVENTORY_MANAGER`: reservados para caja, reportes e
+  inventario futuros; no reciben acceso administrativo amplio todavia.
+- `CUSTOMER`: reservado para portal publico/futuro; no puede usar endpoints
+  administrativos actuales.
 
 ## Reglas de disponibilidad
 

@@ -39,9 +39,14 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
 - Añadir documentación en `README.md` sobre cómo ejecutar tests con Docker en
   Windows y cómo configurar CI para que ejecute las pruebas de integración.
 - Reemplazar los headers temporales `X-Company-Id` y `X-Branch-Id` por tenant
-  derivado del contexto de seguridad/JWT en HU-18. Mientras tanto, estos
-  headers son solo una estrategia de compatibilidad y pruebas internas, no un
-  mecanismo final de seguridad.
+  derivado del contexto de seguridad/JWT en HU-18. Estado: implementado como
+  prioridad principal. Los headers siguen existiendo como fallback temporal
+  cuando no hay usuario autenticado.
+- Limitar rol `BARBER` a su propio barbero requiere una relacion formal
+  `user_account -> barber`; queda pendiente para una HU futura.
+- `COMPANY_OWNER` actualmente crea usuarios en el tenant/branch derivado del
+  JWT. La gestion completa multi-branch de usuarios dentro de una company queda
+  pendiente.
 
 ## Referencias
 

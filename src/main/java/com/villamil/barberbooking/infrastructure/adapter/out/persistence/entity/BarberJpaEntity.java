@@ -19,13 +19,19 @@ public class BarberJpaEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Column(name = "company_id", nullable = false)
+	private Long companyId;
+
+	@Column(name = "branch_id", nullable = false)
+	private Long branchId;
+
 	@Column(name = "full_name", nullable = false, length = 120)
 	private String fullName;
 
-	@Column(name = "phone", nullable = false, length = 30, unique = true)
+	@Column(name = "phone", nullable = false, length = 30)
 	private String phone;
 
-	@Column(name = "email", length = 120, unique = true)
+	@Column(name = "email", length = 120)
 	private String email;
 
 	@Column(name = "active", nullable = false)
@@ -42,6 +48,8 @@ public class BarberJpaEntity {
 
 	public BarberJpaEntity(
 			Long id,
+			Long companyId,
+			Long branchId,
 			String fullName,
 			String phone,
 			String email,
@@ -50,6 +58,8 @@ public class BarberJpaEntity {
 			Instant updatedAt
 	) {
 		this.id = id;
+		this.companyId = companyId;
+		this.branchId = branchId;
 		this.fullName = fullName;
 		this.phone = phone;
 		this.email = email;
@@ -76,6 +86,14 @@ public class BarberJpaEntity {
 
 	public Long getId() {
 		return id;
+	}
+
+	public Long getCompanyId() {
+		return companyId;
+	}
+
+	public Long getBranchId() {
+		return branchId;
 	}
 
 	public String getFullName() {

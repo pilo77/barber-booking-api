@@ -38,6 +38,10 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   separación más estricta.
 - Añadir documentación en `README.md` sobre cómo ejecutar tests con Docker en
   Windows y cómo configurar CI para que ejecute las pruebas de integración.
+- Reemplazar los headers temporales `X-Company-Id` y `X-Branch-Id` por tenant
+  derivado del contexto de seguridad/JWT en HU-18. Mientras tanto, estos
+  headers son solo una estrategia de compatibilidad y pruebas internas, no un
+  mecanismo final de seguridad.
 
 ## Referencias
 

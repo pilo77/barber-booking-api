@@ -9,12 +9,23 @@ import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.
 
 public interface BarberWorkingHourJpaRepository extends JpaRepository<BarberWorkingHourJpaEntity, Long> {
 
-	Optional<BarberWorkingHourJpaEntity> findByIdAndBarberId(Long id, Long barberId);
-
-	List<BarberWorkingHourJpaEntity> findAllByBarberIdOrderByDayOfWeekAscStartTimeAsc(Long barberId);
-
-	List<BarberWorkingHourJpaEntity> findAllByBarberIdAndDayOfWeekAndActiveTrueOrderByStartTimeAsc(
+	Optional<BarberWorkingHourJpaEntity> findByIdAndBarberIdAndCompanyIdAndBranchId(
+			Long id,
 			Long barberId,
+			Long companyId,
+			Long branchId
+	);
+
+	List<BarberWorkingHourJpaEntity> findAllByBarberIdAndCompanyIdAndBranchIdOrderByDayOfWeekAscStartTimeAsc(
+			Long barberId,
+			Long companyId,
+			Long branchId
+	);
+
+	List<BarberWorkingHourJpaEntity> findAllByBarberIdAndCompanyIdAndBranchIdAndDayOfWeekAndActiveTrueOrderByStartTimeAsc(
+			Long barberId,
+			Long companyId,
+			Long branchId,
 			short dayOfWeek
 	);
 }

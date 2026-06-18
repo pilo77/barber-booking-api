@@ -20,6 +20,12 @@ public class BarberWorkingHourJpaEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Column(name = "company_id", nullable = false)
+	private Long companyId;
+
+	@Column(name = "branch_id", nullable = false)
+	private Long branchId;
+
 	@Column(name = "barber_id", nullable = false)
 	private Long barberId;
 
@@ -46,6 +52,8 @@ public class BarberWorkingHourJpaEntity {
 
 	public BarberWorkingHourJpaEntity(
 			Long id,
+			Long companyId,
+			Long branchId,
 			Long barberId,
 			short dayOfWeek,
 			LocalTime startTime,
@@ -55,6 +63,8 @@ public class BarberWorkingHourJpaEntity {
 			Instant updatedAt
 	) {
 		this.id = id;
+		this.companyId = companyId;
+		this.branchId = branchId;
 		this.barberId = barberId;
 		this.dayOfWeek = dayOfWeek;
 		this.startTime = startTime;
@@ -82,6 +92,14 @@ public class BarberWorkingHourJpaEntity {
 
 	public Long getId() {
 		return id;
+	}
+
+	public Long getCompanyId() {
+		return companyId;
+	}
+
+	public Long getBranchId() {
+		return branchId;
 	}
 
 	public Long getBarberId() {

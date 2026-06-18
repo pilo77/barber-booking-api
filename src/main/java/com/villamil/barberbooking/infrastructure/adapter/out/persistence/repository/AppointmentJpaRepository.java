@@ -3,6 +3,7 @@ package com.villamil.barberbooking.infrastructure.adapter.out.persistence.reposi
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -15,19 +16,27 @@ public interface AppointmentJpaRepository extends JpaRepository<AppointmentJpaEn
 	@Query("""
 			select count(appointment) > 0
 			from AppointmentJpaEntity appointment
-			where appointment.barberId = :barberId
+			where appointment.companyId = :companyId
+				and appointment.branchId = :branchId
+				and appointment.barberId = :barberId
 				and appointment.status in :blockingStatuses
 				and appointment.startAt < :endAt
 				and appointment.endAt > :startAt
 			""")
 	boolean existsBlockingOverlap(
+			Long companyId,
+			Long branchId,
 			Long barberId,
 			LocalDateTime startAt,
 			LocalDateTime endAt,
 			Collection<AppointmentStatus> blockingStatuses
 	);
 
-	List<AppointmentJpaEntity> findAllByBarberIdAndStartAtGreaterThanEqualAndStartAtLessThanOrderByStartAtAsc(
+	Optional<AppointmentJpaEntity> findByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
+
+	List<AppointmentJpaEntity> findAllByCompanyIdAndBranchIdAndBarberIdAndStartAtGreaterThanEqualAndStartAtLessThanOrderByStartAtAsc(
+			Long companyId,
+			Long branchId,
 			Long barberId,
 			LocalDateTime startAt,
 			LocalDateTime endAt

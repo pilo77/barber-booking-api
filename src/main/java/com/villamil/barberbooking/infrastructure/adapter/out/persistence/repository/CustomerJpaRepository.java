@@ -1,16 +1,22 @@
 package com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+import java.util.Optional;
 
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.CustomerJpaEntity;
 
 public interface CustomerJpaRepository extends JpaRepository<CustomerJpaEntity, Long> {
 
-	boolean existsByPhone(String phone);
+	Optional<CustomerJpaEntity> findByIdAndCompanyId(Long id, Long companyId);
 
-	boolean existsByEmail(String email);
+	List<CustomerJpaEntity> findAllByCompanyIdOrderByIdAsc(Long companyId);
 
-	boolean existsByPhoneAndIdNot(String phone, Long id);
+	boolean existsByCompanyIdAndPhone(Long companyId, String phone);
 
-	boolean existsByEmailAndIdNot(String email, Long id);
+	boolean existsByCompanyIdAndEmail(Long companyId, String email);
+
+	boolean existsByCompanyIdAndPhoneAndIdNot(Long companyId, String phone, Long id);
+
+	boolean existsByCompanyIdAndEmailAndIdNot(Long companyId, String email, Long id);
 }

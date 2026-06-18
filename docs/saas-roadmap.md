@@ -86,6 +86,12 @@ Agregar modelo base de `Company` y `Branch`, columnas `company_id` y
 `branch_id` donde corresponda, estrategia de resolucion de tenant y primeras
 restricciones de aislamiento.
 
+Estado actual: implementada como foundation interna. Los endpoints existentes
+siguen funcionando sin headers con tenant default `1/1`. Para pruebas de
+aislamiento antes de HU-18 se puede enviar `X-Company-Id` y `X-Branch-Id`.
+Estos headers son temporales; el cliente publico futuro debe resolver la
+barberia por `slug`, no enviar ids de tenant en el body.
+
 Alcance recomendado:
 
 - Crear tablas `companies` y `branches`.

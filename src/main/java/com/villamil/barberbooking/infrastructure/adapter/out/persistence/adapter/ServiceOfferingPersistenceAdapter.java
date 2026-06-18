@@ -6,6 +6,8 @@ import java.util.Optional;
 import org.springframework.stereotype.Component;
 
 import com.villamil.barberbooking.application.port.out.ServiceOfferingRepositoryPort;
+import com.villamil.barberbooking.application.port.out.TenantContextProvider;
+import com.villamil.barberbooking.application.tenant.TenantContext;
 import com.villamil.barberbooking.domain.model.ServiceOffering;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.mapper.ServiceOfferingPersistenceMapper;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.ServiceOfferingJpaRepository;
@@ -15,31 +17,37 @@ public class ServiceOfferingPersistenceAdapter implements ServiceOfferingReposit
 
 	private final ServiceOfferingJpaRepository serviceOfferingJpaRepository;
 	private final ServiceOfferingPersistenceMapper serviceOfferingPersistenceMapper;
+	private final TenantContextProvider tenantContextProvider;
 
 	public ServiceOfferingPersistenceAdapter(
 			ServiceOfferingJpaRepository serviceOfferingJpaRepository,
-			ServiceOfferingPersistenceMapper serviceOfferingPersistenceMapper
+			ServiceOfferingPersistenceMapper serviceOfferingPersistenceMapper,
+			TenantContextProvider tenantContextProvider
 	) {
 		this.serviceOfferingJpaRepository = serviceOfferingJpaRepository;
 		this.serviceOfferingPersistenceMapper = serviceOfferingPersistenceMapper;
+		this.tenantContextProvider = tenantContextProvider;
 	}
 
 	@Override
 	public ServiceOffering save(ServiceOffering serviceOffering) {
+		TenantContext tenantContext = tenantContextProvider.currentTenant();
 		return serviceOfferingPersistenceMapper.toDomain(
-				serviceOfferingJpaRepository.save(serviceOfferingPersistenceMapper.toEntity(serviceOffering))
+				serviceOfferingJpaRepository.save(serviceOfferingPersistenceMapper.toEntity(serviceOffering, tenantContext))
 		);
 	}
 
 	@Override
 	public Optional<ServiceOffering> findById(Long id) {
-		return serviceOfferingJpaRepository.findById(id)
+		TenantContext tenantContext = tenantContextProvider.currentTenant();
+		return serviceOfferingJpaRepository.findByIdAndCompanyId(id, tenantContext.companyId())
 				.map(serviceOfferingPersistenceMapper::toDomain);
 	}
 
 	@Override
 	public List<ServiceOffering> findAll() {
-		return serviceOfferingJpaRepository.findAll()
+		TenantContext tenantContext = tenantContextProvider.currentTenant();
+		return serviceOfferingJpaRepository.findAllByCompanyIdOrderByIdAsc(tenantContext.companyId())
 				.stream()
 				.map(serviceOfferingPersistenceMapper::toDomain)
 				.toList();
@@ -47,11 +55,13 @@ public class ServiceOfferingPersistenceAdapter implements ServiceOfferingReposit
 
 	@Override
 	public boolean existsByName(String name) {
-		return serviceOfferingJpaRepository.existsByName(name);
+		TenantContext tenantContext = tenantContextProvider.currentTenant();
+		return serviceOfferingJpaRepository.existsByCompanyIdAndName(tenantContext.companyId(), name);
 	}
 
 	@Override
 	public boolean existsByNameAndIdNot(String name, Long id) {
-		return serviceOfferingJpaRepository.existsByNameAndIdNot(name, id);
+		TenantContext tenantContext = tenantContextProvider.currentTenant();
+		return serviceOfferingJpaRepository.existsByCompanyIdAndNameAndIdNot(tenantContext.companyId(), name, id);
 	}
 }

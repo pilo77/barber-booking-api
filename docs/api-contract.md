@@ -3,6 +3,16 @@
 Version base de endpoints planeados. La implementacion debe avanzar por
 historias de usuario pequenas y testeadas.
 
+## Swagger / OpenAPI
+
+La aplicacion expone la especificacion OpenAPI y la UI de Swagger en:
+
+- `/v3/api-docs` (JSON OpenAPI)
+- `/swagger-ui/index.html` (Swagger UI)
+
+Estos endpoints estan habilitados desde la configuracion en la capa
+`infrastructure`.
+
 ## Customers
 
 ```http
@@ -36,6 +46,29 @@ Response:
   "updatedAt": "2026-06-17T12:00:00Z"
 }
 ```
+
+## Standard error response
+
+All error responses follow this JSON shape:
+
+```json
+{
+  "timestamp": "2026-06-17T10:00:00Z",
+  "status": 409,
+  "error": "Conflict",
+  "message": "El horario seleccionado no está disponible",
+  "path": "/api/v1/appointments",
+  "code": "APPOINTMENT_NOT_AVAILABLE"
+}
+```
+
+- `timestamp`: UTC instant of the error.
+- `status`: HTTP status code.
+- `error`: HTTP reason phrase.
+- `message`: human readable message.
+- `path`: request path.
+- `code`: application specific error code (derived from exception name).
+
 
 ## Barbers
 

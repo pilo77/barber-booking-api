@@ -7,5 +7,5 @@ import com.villamil.barberbooking.application.dto.response.AvailabilitySlotRespo
 
 public interface GetBarberAvailabilityUseCase {
 
-	List<AvailabilitySlotResponse> getAvailability(Long barberId, LocalDate date, Long serviceId);
+	List<AvailabilitySlotResponse> getAvailability(Long barberId, LocalDate date, Long serviceOfferingId);
 }

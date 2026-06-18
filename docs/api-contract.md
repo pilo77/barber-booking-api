@@ -159,14 +159,44 @@ POST   /api/v1/appointments
 GET    /api/v1/appointments/{id}
 GET    /api/v1/barbers/{barberId}/appointments?date=2026-06-17
 PATCH  /api/v1/appointments/{id}/cancel
-PATCH  /api/v1/appointments/{id}/start
-PATCH  /api/v1/appointments/{id}/complete
 ```
+
+Request `POST /api/v1/appointments`:
+
+```json
+{
+  "customerId": 1,
+  "barberId": 1,
+  "serviceOfferingId": 1,
+  "startAt": "2026-06-18T09:00:00"
+}
+```
+
+Response:
+
+```json
+{
+  "id": 1,
+  "customerId": 1,
+  "barberId": 1,
+  "serviceOfferingId": 1,
+  "startAt": "2026-06-18T09:00:00",
+  "endAt": "2026-06-18T09:30:00",
+  "status": "SCHEDULED",
+  "source": "ONLINE",
+  "createdAt": "2026-06-17T18:45:00Z",
+  "updatedAt": null
+}
+```
+
+El backend calcula `endAt` con la duracion del servicio. Las citas nuevas
+inician como `SCHEDULED` y `ONLINE`. Los cruces con citas activas o reservas
+fuera del horario laboral activo del barbero responden `409 Conflict`.
 
 ## Availability
 
 ```http
-GET /api/v1/barbers/{barberId}/availability?date=2026-06-17&serviceId=1
+GET /api/v1/barbers/{barberId}/availability?date=2026-06-17&serviceOfferingId=1
 ```
 
 Respuesta esperada:

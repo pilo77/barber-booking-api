@@ -10,6 +10,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
+import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
+import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
+import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
 import com.villamil.barberbooking.domain.exception.BarberAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
 import com.villamil.barberbooking.domain.exception.BarberWorkingHourNotFoundException;
@@ -23,6 +26,23 @@ import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(AppointmentNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handleAppointmentNotFound(AppointmentNotFoundException exception) {
+		return problem(HttpStatus.NOT_FOUND, "Appointment not found", exception.getMessage());
+	}
+
+	@ExceptionHandler(AppointmentNotAvailableException.class)
+	public ResponseEntity<ProblemDetail> handleAppointmentNotAvailable(AppointmentNotAvailableException exception) {
+		return problem(HttpStatus.CONFLICT, "Appointment not available", exception.getMessage());
+	}
+
+	@ExceptionHandler(AppointmentOutsideWorkingHoursException.class)
+	public ResponseEntity<ProblemDetail> handleAppointmentOutsideWorkingHours(
+			AppointmentOutsideWorkingHoursException exception
+	) {
+		return problem(HttpStatus.CONFLICT, "Appointment outside working hours", exception.getMessage());
+	}
 
 	@ExceptionHandler(CustomerNotFoundException.class)
 	public ResponseEntity<ProblemDetail> handleCustomerNotFound(CustomerNotFoundException exception) {

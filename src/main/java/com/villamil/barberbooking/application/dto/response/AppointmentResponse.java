@@ -11,12 +11,13 @@ public record AppointmentResponse(
 		Long id,
 		Long customerId,
 		Long barberId,
-		Long serviceId,
+		Long serviceOfferingId,
 		LocalDateTime startAt,
 		LocalDateTime endAt,
 		AppointmentStatus status,
 		AppointmentSource source,
-		Instant createdAt
+		Instant createdAt,
+		Instant updatedAt
 ) {
 
 	public static AppointmentResponse from(Appointment appointment) {
@@ -24,12 +25,13 @@ public record AppointmentResponse(
 				appointment.id(),
 				appointment.customerId(),
 				appointment.barberId(),
-				appointment.serviceId(),
+				appointment.serviceOfferingId(),
 				appointment.startAt(),
 				appointment.endAt(),
 				appointment.status(),
 				appointment.source(),
-				appointment.createdAt()
+				appointment.createdAt(),
+				appointment.updatedAt()
 		);
 	}
 }

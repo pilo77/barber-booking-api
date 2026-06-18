@@ -108,6 +108,12 @@ Estado actual: foundation implementada en rama de HU-18. Incluye bootstrap del
 primer usuario, login JWT, `GET /auth/me`, usuarios internos minimos, roles y
 tenant desde JWT para endpoints administrativos.
 
+Nota de seguridad: HU-18 entrega RBAC base por rol/path. No entrega todavia
+autorizacion fina por ownership. Con JWT valido, `X-Company-Id` y
+`X-Branch-Id` no sobrescriben el tenant del usuario; esos headers quedan solo
+como fallback temporal cuando no hay JWT, hasta que el tenant se derive siempre
+de autenticacion o del slug publico segun el flujo.
+
 Alcance implementado:
 
 - Modelo `UserAccount` y `Role`.
@@ -119,12 +125,35 @@ Alcance implementado:
 
 Pendiente para futuras HUs:
 
+- Endurecer autorizacion por ownership y operacion.
 - Relacion user-barber para limitar dashboard/agenda del rol `BARBER`.
+- Limitar `BRANCH_MANAGER` a operaciones de su branch.
+- Limitar `RECEPTIONIST` segun permisos operativos concretos.
+- Evitar acceso amplio a modulos no necesarios para cada rol.
+- Agregar issuer, audience y `jti` al JWT antes de produccion.
 - Auditoria persistente de acciones sensibles.
 - Gestion completa multi-branch para `COMPANY_OWNER`.
 - Roles de caja, contabilidad e inventario cuando existan esos modulos.
 
-### HU-19 Barber public profile
+### HU-19 Authorization hardening and ownership rules
+
+Endurecer autorizacion por ownership y operacion antes de construir perfil
+publico, caja, pagos o inventario.
+
+Alcance recomendado:
+
+- Definir matriz de permisos por rol, metodo HTTP, recurso y operacion.
+- Crear relacion formal `user_account -> barber`.
+- Limitar `BARBER` a su propia agenda, dashboard y citas asignadas.
+- Limitar `BRANCH_MANAGER` a recursos y operaciones de su branch.
+- Limitar `RECEPTIONIST` a clientes, citas, walk-ins y disponibilidad segun
+  permisos operativos.
+- Restringir acceso amplio a modulos que cada rol no necesita.
+- Agregar claims y validacion de issuer, audience y `jti` al JWT.
+- Agregar auditoria persistente de acciones sensibles.
+- Cubrir con tests negativos entre usuarios, branch y company.
+
+### HU-20 Barber public profile
 
 Exponer perfil publico de barberia/sucursal/barbero para reserva online.
 
@@ -135,7 +164,7 @@ Alcance recomendado:
 - Horarios publicos.
 - Reglas de visibilidad y datos no sensibles.
 
-### HU-20 Online booking barber selection
+### HU-21 Online booking barber selection
 
 Permitir que un cliente seleccione sucursal, servicio, barbero y slot
 disponible.
@@ -147,7 +176,7 @@ Alcance recomendado:
 - Politicas contra doble reserva.
 - Confirmacion de reserva online.
 
-### HU-21 Cash register foundation
+### HU-22 Cash register foundation
 
 Crear la base de caja por sucursal.
 
@@ -160,7 +189,7 @@ Alcance recomendado:
 - Movimientos de efectivo.
 - Restriccion de caja activa por branch/cashier.
 
-### HU-22 Payments and receipts
+### HU-23 Payments and receipts
 
 Registrar pagos y emitir recibos asociados a citas, walk-ins y ventas.
 
@@ -172,7 +201,7 @@ Alcance recomendado:
 - Relacion con cash register cuando el metodo sea efectivo.
 - Respuestas y errores estandarizados.
 
-### HU-23 Products and inventory
+### HU-24 Products and inventory
 
 Agregar productos, categorias e inventario.
 
@@ -186,7 +215,7 @@ Alcance recomendado:
 - Auditoria por user/company/branch.
 - Proteccion contra stock negativo.
 
-### HU-24 Reports and commissions
+### HU-25 Reports and commissions
 
 Agregar reportes y comisiones.
 
@@ -199,7 +228,7 @@ Alcance recomendado:
 - Cierres de caja.
 - Movimientos de inventario.
 
-### HU-25 Customer portal
+### HU-26 Customer portal
 
 Crear capacidades de autoservicio para clientes.
 
@@ -211,7 +240,7 @@ Alcance recomendado:
 - Recibos propios.
 - Preferencias de comunicacion.
 
-### HU-26 Ratings and reviews
+### HU-27 Ratings and reviews
 
 Agregar calificaciones y reseñas despues de citas completadas.
 
@@ -226,27 +255,30 @@ Alcance recomendado:
 
 1. HU-17 Multi-tenant foundation.
 2. HU-18 Auth and RBAC.
-3. HU-19 Barber public profile.
-4. HU-20 Online booking barber selection.
-5. HU-21 Cash register foundation.
-6. HU-22 Payments and receipts.
-7. HU-23 Products and inventory.
-8. HU-24 Reports and commissions.
-9. HU-25 Customer portal.
-10. HU-26 Ratings and reviews.
+3. HU-19 Authorization hardening and ownership rules.
+4. HU-20 Barber public profile.
+5. HU-21 Online booking barber selection.
+6. HU-22 Cash register foundation.
+7. HU-23 Payments and receipts.
+8. HU-24 Products and inventory.
+9. HU-25 Reports and commissions.
+10. HU-26 Customer portal.
+11. HU-27 Ratings and reviews.
 
 El orden recomendado empieza por multi-tenant porque company/branch afectan
 todas las entidades y queries. Auth/RBAC debe venir despues para que el tenant
 y los permisos salgan del contexto de seguridad y no del request body.
 
-Los perfiles publicos y la seleccion de barbero vienen antes de caja porque
-extienden el valor actual del MVP de reservas sin introducir contabilidad.
-Caja, pagos y recibos deben implementarse antes de inventario para definir el
-documento comercial que consumira stock. Inventario despues puede apoyarse en
-pagos/recibos y registrar movimientos con trazabilidad. Reportes y comisiones
-requieren datos confiables de agenda, pagos y caja. Portal de cliente y ratings
-son capas de experiencia que conviene construir cuando el modelo operativo ya
-este estable.
+Antes de construir perfiles publicos y reservas por slug se debe endurecer la
+autorizacion por ownership para que los usuarios internos no tengan permisos
+mas amplios de los necesarios. Luego los perfiles publicos y la seleccion de
+barbero vienen antes de caja porque extienden el valor actual del MVP de
+reservas sin introducir contabilidad. Caja, pagos y recibos deben implementarse
+antes de inventario para definir el documento comercial que consumira stock.
+Inventario despues puede apoyarse en pagos/recibos y registrar movimientos con
+trazabilidad. Reportes y comisiones requieren datos confiables de agenda, pagos
+y caja. Portal de cliente y ratings son capas de experiencia que conviene
+construir cuando el modelo operativo ya este estable.
 
 ## Technical risks
 

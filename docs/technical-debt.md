@@ -48,6 +48,33 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   JWT. La gestion completa multi-branch de usuarios dentro de una company queda
   pendiente.
 
+## HU-18 Auth/RBAC limitations
+
+HU-18 implementa una base funcional de autenticacion y RBAC, pero no debe
+tratarse como autorizacion final de produccion. La autorizacion actual combina
+roles y paths de Spring Security con validaciones de tenant en casos de uso.
+Esto sirve como foundation, pero todavia no implementa ownership authorization
+fina por recurso, operacion y relacion del usuario con la entidad operativa.
+
+Limitaciones documentadas antes de merge:
+
+- RBAC actual es por rol/path, no por ownership completo.
+- Falta una relacion formal `user_account -> barber`.
+- `BARBER` todavia no queda limitado estrictamente a su propia agenda,
+  dashboard y citas.
+- `BRANCH_MANAGER` requiere reglas finas por operacion dentro de su branch.
+- `RECEPTIONIST` requiere permisos operativos mas precisos por modulo.
+- Algunos roles internos tienen acceso amplio a modulos que no siempre
+  necesitan para su responsabilidad final.
+- JWT todavia no incluye validacion de issuer, audience ni `jti`; debe
+  endurecerse antes de produccion.
+- Falta auditoria persistente de acciones sensibles como bootstrap, login
+  fallido repetido, creacion/desactivacion de usuarios y cambios de roles.
+
+Decision: crear como siguiente HU obligatoria `HU-19: Authorization hardening
+and ownership rules` antes de construir perfil publico, caja, pagos o
+inventario.
+
 ## Referencias
 
 - `docs/quality-audit.md` — hallazgos originales.

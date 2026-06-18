@@ -22,6 +22,11 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
   hay usuario autenticado.
 - Si existe JWT valido, los headers no pueden sobrescribir el tenant del
   usuario.
+- HU-18 implementa RBAC base por rol/path. No implementa todavia autorizacion
+  fina por ownership de cada recurso.
+- La siguiente HU obligatoria de seguridad es `HU-19: Authorization hardening
+  and ownership rules`, antes de perfil publico, reservas por slug, caja, pagos
+  o inventario.
 - Los casos de uso deben consultar recursos dentro del tenant actual. Si un
   cliente, barbero, servicio u appointment existe en otra company/branch, debe
   tratarse como no encontrado para el tenant actual.
@@ -42,6 +47,16 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
   inventario futuros; no reciben acceso administrativo amplio todavia.
 - `CUSTOMER`: reservado para portal publico/futuro; no puede usar endpoints
   administrativos actuales.
+
+### Pendientes de authorization hardening
+
+- Crear relacion formal `user_account -> barber`.
+- Limitar `BARBER` a su propia agenda, dashboard y citas asignadas.
+- Limitar `BRANCH_MANAGER` a operaciones de su branch.
+- Limitar `RECEPTIONIST` segun permisos operativos concretos.
+- Evitar acceso amplio a modulos no necesarios por rol.
+- Agregar issuer, audience y `jti` al JWT antes de produccion.
+- Registrar auditoria persistente de acciones sensibles.
 
 ## Reglas de disponibilidad
 

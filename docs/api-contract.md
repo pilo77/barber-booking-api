@@ -159,6 +159,9 @@ POST   /api/v1/appointments
 GET    /api/v1/appointments/{id}
 GET    /api/v1/barbers/{barberId}/appointments?date=2026-06-17
 PATCH  /api/v1/appointments/{id}/cancel
+PATCH  /api/v1/appointments/{id}/start
+PATCH  /api/v1/appointments/{id}/complete
+PATCH  /api/v1/appointments/{id}/no-show
 ```
 
 Request `POST /api/v1/appointments`:
@@ -192,6 +195,18 @@ Response:
 El backend calcula `endAt` con la duracion del servicio. Las citas nuevas
 inician como `SCHEDULED` y `ONLINE`. Los cruces con citas activas o reservas
 fuera del horario laboral activo del barbero responden `409 Conflict`.
+
+Transiciones de estado:
+
+```text
+SCHEDULED -> IN_PROGRESS
+IN_PROGRESS -> COMPLETED
+SCHEDULED -> NO_SHOW
+SCHEDULED -> CANCELLED
+```
+
+Las transiciones invalidas responden `409 Conflict`. Cada cambio de estado
+actualiza `updatedAt` y no elimina fisicamente la cita.
 
 ## Availability
 

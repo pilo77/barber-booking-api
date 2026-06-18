@@ -19,8 +19,11 @@ import com.villamil.barberbooking.application.dto.response.AppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.BarberDailyScheduleResponse;
 import com.villamil.barberbooking.application.port.in.BookAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.CancelAppointmentUseCase;
+import com.villamil.barberbooking.application.port.in.CompleteAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetBarberDailyAppointmentsUseCase;
+import com.villamil.barberbooking.application.port.in.MarkAppointmentNoShowUseCase;
+import com.villamil.barberbooking.application.port.in.StartAppointmentUseCase;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.dto.request.BookAppointmentRequest;
 
 import jakarta.validation.Valid;
@@ -35,17 +38,26 @@ public class AppointmentController {
 	private final GetAppointmentUseCase getAppointmentUseCase;
 	private final GetBarberDailyAppointmentsUseCase getBarberDailyAppointmentsUseCase;
 	private final CancelAppointmentUseCase cancelAppointmentUseCase;
+	private final StartAppointmentUseCase startAppointmentUseCase;
+	private final CompleteAppointmentUseCase completeAppointmentUseCase;
+	private final MarkAppointmentNoShowUseCase markAppointmentNoShowUseCase;
 
 	public AppointmentController(
 			BookAppointmentUseCase bookAppointmentUseCase,
 			GetAppointmentUseCase getAppointmentUseCase,
 			GetBarberDailyAppointmentsUseCase getBarberDailyAppointmentsUseCase,
-			CancelAppointmentUseCase cancelAppointmentUseCase
+			CancelAppointmentUseCase cancelAppointmentUseCase,
+			StartAppointmentUseCase startAppointmentUseCase,
+			CompleteAppointmentUseCase completeAppointmentUseCase,
+			MarkAppointmentNoShowUseCase markAppointmentNoShowUseCase
 	) {
 		this.bookAppointmentUseCase = bookAppointmentUseCase;
 		this.getAppointmentUseCase = getAppointmentUseCase;
 		this.getBarberDailyAppointmentsUseCase = getBarberDailyAppointmentsUseCase;
 		this.cancelAppointmentUseCase = cancelAppointmentUseCase;
+		this.startAppointmentUseCase = startAppointmentUseCase;
+		this.completeAppointmentUseCase = completeAppointmentUseCase;
+		this.markAppointmentNoShowUseCase = markAppointmentNoShowUseCase;
 	}
 
 	@PostMapping("/appointments")
@@ -72,5 +84,20 @@ public class AppointmentController {
 	@PatchMapping("/appointments/{id}/cancel")
 	public ResponseEntity<AppointmentResponse> cancel(@PathVariable @Positive Long id) {
 		return ResponseEntity.ok(cancelAppointmentUseCase.cancel(id));
+	}
+
+	@PatchMapping("/appointments/{id}/start")
+	public ResponseEntity<AppointmentResponse> start(@PathVariable @Positive Long id) {
+		return ResponseEntity.ok(startAppointmentUseCase.start(id));
+	}
+
+	@PatchMapping("/appointments/{id}/complete")
+	public ResponseEntity<AppointmentResponse> complete(@PathVariable @Positive Long id) {
+		return ResponseEntity.ok(completeAppointmentUseCase.complete(id));
+	}
+
+	@PatchMapping("/appointments/{id}/no-show")
+	public ResponseEntity<AppointmentResponse> markNoShow(@PathVariable @Positive Long id) {
+		return ResponseEntity.ok(markAppointmentNoShowUseCase.markNoShow(id));
 	}
 }

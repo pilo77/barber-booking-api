@@ -30,6 +30,7 @@ import com.villamil.barberbooking.application.port.out.BarberWorkingHourReposito
 import com.villamil.barberbooking.application.port.out.CustomerRepositoryPort;
 import com.villamil.barberbooking.application.port.out.ServiceOfferingRepositoryPort;
 import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
+import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTransitionException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
@@ -189,6 +190,19 @@ class AppointmentServiceTest {
 		assertThatThrownBy(() -> service.cancel(99L))
 				.isInstanceOf(AppointmentNotFoundException.class)
 				.hasMessage("Appointment not found");
+	}
+
+	@Test
+	void failWhenCancelCompletedAppointment() {
+		CancelAppointmentService service = new CancelAppointmentService(appointmentRepositoryPort);
+
+		when(appointmentRepositoryPort.findById(1L))
+				.thenReturn(Optional.of(appointment(AppointmentStatus.COMPLETED)));
+
+		assertThatThrownBy(() -> service.cancel(1L))
+				.isInstanceOf(AppointmentInvalidStatusTransitionException.class)
+				.hasMessage("Only scheduled appointments can be cancelled");
+		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
 	}
 
 	@Test

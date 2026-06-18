@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTransitionException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
@@ -45,6 +46,13 @@ public class GlobalExceptionHandler {
 			AppointmentOutsideWorkingHoursException exception
 	) {
 		return problem(HttpStatus.CONFLICT, "Appointment outside working hours", exception.getMessage());
+	}
+
+	@ExceptionHandler(AppointmentInvalidStatusTransitionException.class)
+	public ResponseEntity<ProblemDetail> handleAppointmentInvalidStatusTransition(
+			AppointmentInvalidStatusTransitionException exception
+	) {
+		return problem(HttpStatus.CONFLICT, "Invalid appointment transition", exception.getMessage());
 	}
 
 	@ExceptionHandler(CustomerNotFoundException.class)

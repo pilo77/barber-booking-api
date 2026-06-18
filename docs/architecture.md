@@ -96,16 +96,45 @@ persistencia o clientes HTTP) sin afectar la logica de negocio.
 
 ## Políticas y componentes importantes
 
-- `AppointmentBookingPolicy`: componente de aplicacion que centraliza las
-  decisiones de reservacion para evitar duplicacion de reglas entre citas
-  `ONLINE` y `WALK_IN`. Esta politica valida existencia/actividad de recursos,
-  cruces y las reglas de transicion de estado.
+- `AppointmentBookingPolicy`: componente de aplicación que centraliza las
+  decisiones de reservación para evitar duplicación de reglas entre citas
+  `ONLINE` y `WALK_IN`. Esta política valida existencia/actividad de recursos,
+  cruces y las reglas de transición de estado. Observación: actualmente esta
+  clase está registrada como bean de Spring (p. ej. `@Component`) dentro de la
+  capa `application` por practicidad. Esto facilita la inyección en los
+  casos de uso pero introduce una dependencia a Spring en la capa de
+  aplicación.
+
 - `GlobalExceptionHandler`: manejador en la capa web que estandariza las
   respuestas de error (timestamp, status, error, message, path, code) y mapea
-  excepciones de aplicacion a códigos y estados HTTP consistentes.
-- OpenAPI/Swagger: la configuracion de Swagger se encuentra en la capa
-  `infrastructure` y expone la UI y el JSON de especificacion para consumidores
-  e integracion continua.
+  excepciones de aplicación a códigos y estados HTTP consistentes.
 
-Estas decisiones permiten que la logica de negocio sea testeable y que la API
+- OpenAPI/Swagger: la configuración de Swagger se encuentra en la capa
+  `infrastructure` y expone la UI y el JSON de especificación para consumidores
+  e integración continua.
+
+Estas decisiones permiten que la lógica de negocio sea testeable y que la API
 sea consistente para clientes y frontend.
+
+## Notas sobre pragmatismo arquitectónico
+
+- Dominio puro: la capa `domain` se mantiene libre de dependencias de Spring,
+  JPA y HTTP. Las entidades, value objects y excepciones de negocio no conocen
+  el framework.
+
+- Capa `application` pragmática: en esta versión se permite el uso de
+  anotaciones de Spring (`@Service`, `@Component`) en los servicios de
+  aplicación para simplificar la inyección de dependencias y la interoperación
+  con adaptadores. Esta es una decisión intencional de pragmatismo que acelera
+  desarrollo y pruebas locales.
+
+- Alternativa estricta: para una implementación más fiel a la hexagonalidad se
+  puede convertir las clases de `application` en POJOs y registrar los beans
+  exclusivamente desde la configuración en `infrastructure` (por ejemplo,
+  clases `@Configuration` que construyan y expongan los servicios). Esa
+  refactorización está documentada como deuda técnica y puede abordarse cuando
+  se requiera mayor separación de responsabilidades.
+
+Al documentar esta decisión explícitamente evitamos confusiones en entrevistas
+o auditorías y dejamos claro qué partes del sistema son "puramente" agnósticas
+al framework y cuáles usan Spring por pragmatismo.

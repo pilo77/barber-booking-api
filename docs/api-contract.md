@@ -37,6 +37,29 @@ Response:
 }
 ```
 
+## Standard error response
+
+All error responses follow this JSON shape:
+
+```json
+{
+  "timestamp": "2026-06-17T10:00:00Z",
+  "status": 409,
+  "error": "Conflict",
+  "message": "El horario seleccionado no está disponible",
+  "path": "/api/v1/appointments",
+  "code": "APPOINTMENT_NOT_AVAILABLE"
+}
+```
+
+- `timestamp`: UTC instant of the error.
+- `status`: HTTP status code.
+- `error`: HTTP reason phrase.
+- `message`: human readable message.
+- `path`: request path.
+- `code`: application specific error code (derived from exception name).
+
+
 ## Barbers
 
 ```http

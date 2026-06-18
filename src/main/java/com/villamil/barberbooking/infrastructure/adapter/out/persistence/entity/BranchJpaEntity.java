@@ -46,6 +46,42 @@ public class BranchJpaEntity {
 	protected BranchJpaEntity() {
 	}
 
+	public Long getId() {
+		return id;
+	}
+
+	public Long getCompanyId() {
+		return companyId;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public String getSlug() {
+		return slug;
+	}
+
+	public String getAddress() {
+		return address;
+	}
+
+	public String getPhone() {
+		return phone;
+	}
+
+	public boolean isActive() {
+		return active;
+	}
+
+	public Instant getCreatedAt() {
+		return createdAt;
+	}
+
+	public Instant getUpdatedAt() {
+		return updatedAt;
+	}
+
 	@PrePersist
 	void prePersist() {
 		Instant now = Instant.now();

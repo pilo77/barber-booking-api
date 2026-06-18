@@ -41,8 +41,8 @@ Reglas:
 - `X-Company-Id` scopea `customers` y `services`.
 - `X-Company-Id` + `X-Branch-Id` scopean `barbers`, `working-hours`,
   `appointments`, `availability` y `daily-dashboard`.
-- Esta estrategia de headers es temporal. En HU-20 los endpoints publicos
-  resolveran la barberia por `slug`, no por ids enviados por el cliente.
+- Esta estrategia de headers es temporal. Los endpoints publicos resuelven la
+  barberia por `slug`, no por ids de tenant enviados por el cliente.
 
 ## Auth and RBAC
 
@@ -51,6 +51,7 @@ Endpoints publicos:
 ```http
 POST /api/v1/auth/bootstrap
 POST /api/v1/auth/login
+GET  /api/v1/public/**
 GET  /actuator/health
 GET  /swagger-ui/**
 GET  /v3/api-docs/**
@@ -111,6 +112,97 @@ Authorization: Bearer <accessToken>
 ```
 
 `GET /api/v1/auth/me` devuelve el usuario autenticado.
+
+## Public Barber Shop Profile
+
+HU-20 expone consultas publicas sin JWT para mostrar una barberia, sus sedes,
+servicios visibles y barberos visibles. No crea citas publicas todavia.
+
+Endpoints:
+
+```http
+GET /api/v1/public/barber-shops/{companySlug}
+GET /api/v1/public/barber-shops/{companySlug}/branches
+GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}
+GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/services
+GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/barbers
+```
+
+Decision de slugs:
+
+- `company.slug` es unico globalmente.
+- `branch.slug` es unico dentro de cada company.
+- Por eso los endpoints de branch usan `companySlug + branchSlug` para evitar
+  colisiones entre barberias distintas.
+- Estos endpoints no usan `X-Company-Id` ni `X-Branch-Id`.
+
+`GET /api/v1/public/barber-shops/{companySlug}`:
+
+```json
+{
+  "slug": "ponte-perro",
+  "name": "Ponte Perro Barberia",
+  "description": "Barberia especializada en cortes modernos.",
+  "logoUrl": "https://cdn.example.com/logo.png",
+  "active": true
+}
+```
+
+`GET /api/v1/public/barber-shops/{companySlug}/branches`:
+
+```json
+[
+  {
+    "slug": "neiva-centro",
+    "name": "Neiva Centro",
+    "address": "Calle 1 #2-3",
+    "phone": "3001234567"
+  }
+]
+```
+
+`GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/services`:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Corte clasico",
+    "description": "Corte tradicional.",
+    "durationMinutes": 30,
+    "price": 25000.00
+  }
+]
+```
+
+`GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/barbers`:
+
+```json
+[
+  {
+    "id": 1,
+    "displayName": "Santiago",
+    "photoUrl": "https://cdn.example.com/santiago.png",
+    "bio": "Especialista en fade y barba.",
+    "specialties": "Fade, barba, cejas"
+  }
+]
+```
+
+Reglas de exposicion:
+
+- Solo se devuelven companies activas.
+- Solo se devuelven branches activas.
+- Solo se devuelven services activos y `visibleForOnlineBooking=true`.
+- El endpoint de servicios públicos de branch valida que la branch pertenece a la
+  company pública, pero devuelve el catálogo visible de servicios de esa company.
+  No existe un catálogo de servicios específico por branch en HU-20.
+- Solo se devuelven barbers activos y `activeForOnlineBooking=true`.
+- Se pueden exponer `id` de service/barber porque HU-21 los usara para
+  disponibilidad y reserva.
+- No se exponen emails internos, telefonos de barberos, usuarios, roles,
+  password hashes, `companyId` ni `branchId`.
+- Si el recurso no existe o esta inactivo, se responde `404`.
 
 ## User Accounts
 

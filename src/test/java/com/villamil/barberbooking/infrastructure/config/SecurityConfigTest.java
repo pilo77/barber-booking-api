@@ -16,18 +16,25 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.villamil.barberbooking.application.dto.response.CustomerResponse;
+import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
 import com.villamil.barberbooking.application.port.in.CreateCustomerUseCase;
 import com.villamil.barberbooking.application.port.in.DeactivateCustomerUseCase;
 import com.villamil.barberbooking.application.port.in.GetCustomerUseCase;
+import com.villamil.barberbooking.application.port.in.GetPublicBarberShopUseCase;
+import com.villamil.barberbooking.application.port.in.GetPublicBranchUseCase;
 import com.villamil.barberbooking.application.port.in.ListCustomersUseCase;
+import com.villamil.barberbooking.application.port.in.ListPublicBarbersUseCase;
+import com.villamil.barberbooking.application.port.in.ListPublicBranchesUseCase;
+import com.villamil.barberbooking.application.port.in.ListPublicServicesUseCase;
 import com.villamil.barberbooking.application.port.in.UpdateCustomerUseCase;
 import com.villamil.barberbooking.application.port.out.JwtTokenPort;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.CustomerController;
+import com.villamil.barberbooking.infrastructure.adapter.in.web.PublicBarberShopController;
 import com.villamil.barberbooking.infrastructure.security.JwtAuthenticationFilter;
 import com.villamil.barberbooking.infrastructure.tenant.TemporaryTenantHeaderFilter;
 import com.villamil.barberbooking.infrastructure.tenant.ThreadLocalTenantContextProvider;
 
-@WebMvcTest(CustomerController.class)
+@WebMvcTest({CustomerController.class, PublicBarberShopController.class})
 @Import({
 		SecurityConfig.class,
 		JwtAuthenticationFilter.class,
@@ -57,10 +64,34 @@ class SecurityConfigTest {
 	@MockitoBean
 	private DeactivateCustomerUseCase deactivateCustomerUseCase;
 
+	@MockitoBean
+	private GetPublicBarberShopUseCase getPublicBarberShopUseCase;
+
+	@MockitoBean
+	private ListPublicBranchesUseCase listPublicBranchesUseCase;
+
+	@MockitoBean
+	private GetPublicBranchUseCase getPublicBranchUseCase;
+
+	@MockitoBean
+	private ListPublicServicesUseCase listPublicServicesUseCase;
+
+	@MockitoBean
+	private ListPublicBarbersUseCase listPublicBarbersUseCase;
+
 	@Test
 	void protectedEndpointWithoutTokenReturnsUnauthorized() throws Exception {
 		mockMvc.perform(get("/api/v1/customers"))
 				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void publicEndpointWithoutTokenReturnsOk() throws Exception {
+		when(getPublicBarberShopUseCase.getBySlug("ponte-perro"))
+				.thenReturn(new PublicBarberShopResponse("ponte-perro", "Ponte Perro", null, null, true));
+
+		mockMvc.perform(get("/api/v1/public/barber-shops/ponte-perro"))
+				.andExpect(status().isOk());
 	}
 
 	@Test

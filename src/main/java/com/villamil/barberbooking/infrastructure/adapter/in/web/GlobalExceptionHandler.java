@@ -28,6 +28,7 @@ import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.exception.CustomerAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
 import com.villamil.barberbooking.domain.exception.ForbiddenOperationException;
+import com.villamil.barberbooking.domain.exception.PublicResourceNotFoundException;
 import com.villamil.barberbooking.domain.exception.ResourceInactiveException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingNotFoundException;
@@ -137,6 +138,11 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ResourceInactiveException.class)
 	public ResponseEntity<ProblemDetail> handleResourceInactive(ResourceInactiveException exception, HttpServletRequest request) {
 		return problem(HttpStatus.CONFLICT, "Resource inactive", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(PublicResourceNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handlePublicResourceNotFound(PublicResourceNotFoundException exception, HttpServletRequest request) {
+		return problem(HttpStatus.NOT_FOUND, "Public resource not found", exception.getMessage(), request, exception);
 	}
 
 	@ExceptionHandler(BusinessRuleException.class)

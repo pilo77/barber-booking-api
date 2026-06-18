@@ -67,6 +67,29 @@ Pendientes:
 - Gestion multi-branch completa para `COMPANY_OWNER` requiere endpoints de
   administracion de branches.
 
+## Perfil publico de barberia
+
+- HU-20 expone solo consultas publicas por slug; no crea citas publicas.
+- Los endpoints publicos resuelven el tenant por `companySlug` y, para sedes,
+  por `companySlug + branchSlug`.
+- `branch.slug` se trata como unico dentro de una company, no globalmente.
+- Los endpoints publicos no dependen de `X-Company-Id`, `X-Branch-Id` ni JWT.
+- Solo una company activa puede tener perfil publico visible.
+- Solo branches activas se listan o consultan publicamente.
+- Solo services activos con `visible_for_online_booking=true` se listan
+  publicamente.
+- El endpoint de servicios públicos de branch valida que la branch pertenece a la
+  company pública, pero devuelve el catálogo visible de servicios de esa company.
+  No existe un catálogo de servicios específico por branch en HU-20.
+- Solo barbers activos con `active_for_online_booking=true` se listan
+  publicamente.
+- La respuesta publica puede exponer `service.id` y `barber.id` para preparar
+  HU-21 de disponibilidad/reserva, pero no expone `companyId`, `branchId`,
+  emails internos, telefonos de barberos, usuarios, roles ni credenciales.
+- Los servicios siguen siendo de company. Mientras no exista una relacion
+  service-branch, el listado publico de servicios de una branch devuelve los
+  servicios visibles de la company a la que pertenece esa branch.
+
 ## Reglas de disponibilidad
 
 - Un `Barber` solo puede recibir citas si `barber.active == true`.

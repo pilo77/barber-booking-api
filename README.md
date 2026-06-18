@@ -15,6 +15,7 @@ Foundation inicial del proyecto:
 - Documentacion de arquitectura, contrato API y flujo Git.
 - CRUD de clientes con soft delete logico.
 - CRUD de barberos con activacion y desactivacion logica.
+- CRUD de servicios ofrecidos con activacion y desactivacion logica.
 
 ## Requisitos
 
@@ -78,7 +79,7 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 - HU-01: Foundation del proyecto y estructura hexagonal.
 - HU-02: CRUD de clientes.
 - HU-03: CRUD de barberos.
-- HU-04: CRUD de servicios.
+- HU-04: CRUD de servicios ofrecidos.
 - HU-05: Horarios laborales por barbero.
 - HU-06: Agendar cita online.
 - HU-07: Consultar disponibilidad.

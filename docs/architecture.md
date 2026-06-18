@@ -47,7 +47,7 @@ Aqui si pueden vivir Spring MVC, Spring Data JPA, PostgreSQL, Flyway y OpenAPI.
 
 - `Customer`: cliente de la barberia.
 - `Barber`: barbero que atiende citas.
-- `BarberService`: servicio ofrecido, con duracion y precio.
+- `ServiceOffering`: servicio ofrecido, con duracion, precio y activacion logica.
 - `BarberWorkingHour`: horario laboral por dia.
 - `Appointment`: reserva o atencion walk-in.
 

@@ -2,8 +2,9 @@ package com.villamil.barberbooking.application.dto.command;
 
 import java.math.BigDecimal;
 
-public record CreateBarberServiceCommand(
+public record CreateServiceOfferingCommand(
 		String name,
+		String description,
 		int durationMinutes,
 		BigDecimal price
 ) {

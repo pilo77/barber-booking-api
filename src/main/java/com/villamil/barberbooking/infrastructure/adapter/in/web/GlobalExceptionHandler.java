@@ -6,10 +6,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
@@ -17,8 +18,10 @@ import com.villamil.barberbooking.domain.exception.BarberAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
 import com.villamil.barberbooking.domain.exception.BarberWorkingHourNotFoundException;
 import com.villamil.barberbooking.domain.exception.BarberWorkingHourOverlapException;
+import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.exception.CustomerAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
+import com.villamil.barberbooking.domain.exception.ResourceInactiveException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingNotFoundException;
 
@@ -90,9 +93,14 @@ public class GlobalExceptionHandler {
 		return problem(HttpStatus.CONFLICT, "Service offering already exists", exception.getMessage());
 	}
 
+	@ExceptionHandler(ResourceInactiveException.class)
+	public ResponseEntity<ProblemDetail> handleResourceInactive(ResourceInactiveException exception) {
+		return problem(HttpStatus.CONFLICT, "Resource inactive", exception.getMessage());
+	}
+
 	@ExceptionHandler(BusinessRuleException.class)
 	public ResponseEntity<ProblemDetail> handleBusinessRule(BusinessRuleException exception) {
-		return problem(HttpStatus.BAD_REQUEST, "Invalid business request", exception.getMessage());
+		return problem(HttpStatus.BAD_REQUEST, "Invalid request", exception.getMessage());
 	}
 
 	@ExceptionHandler(MethodArgumentNotValidException.class)
@@ -108,6 +116,14 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(ConstraintViolationException.class)
 	public ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException exception) {
+		return problem(HttpStatus.BAD_REQUEST, "Invalid request", "Request validation failed");
+	}
+
+	@ExceptionHandler({
+			MissingServletRequestParameterException.class,
+			MethodArgumentTypeMismatchException.class
+	})
+	public ResponseEntity<ProblemDetail> handleInvalidRequestParameter(Exception exception) {
 		return problem(HttpStatus.BAD_REQUEST, "Invalid request", "Request validation failed");
 	}
 

@@ -1,11 +1,9 @@
 package com.villamil.barberbooking.application.port.in;
 
-import java.time.LocalDate;
-import java.util.List;
-
-import com.villamil.barberbooking.application.dto.response.AvailabilitySlotResponse;
+import com.villamil.barberbooking.application.dto.command.GetBarberAvailabilityCommand;
+import com.villamil.barberbooking.application.dto.response.BarberAvailabilityResponse;
 
 public interface GetBarberAvailabilityUseCase {
 
-	List<AvailabilitySlotResponse> getAvailability(Long barberId, LocalDate date, Long serviceOfferingId);
+	BarberAvailabilityResponse getAvailability(GetBarberAvailabilityCommand command);
 }

@@ -156,6 +156,7 @@ El endpoint no expone borrado fisico. La desactivacion se realiza con
 
 ```http
 POST   /api/v1/appointments
+POST   /api/v1/appointments/walk-ins
 GET    /api/v1/appointments/{id}
 GET    /api/v1/barbers/{barberId}/appointments?date=2026-06-17
 PATCH  /api/v1/appointments/{id}/cancel
@@ -195,6 +196,24 @@ Response:
 El backend calcula `endAt` con la duracion del servicio. Las citas nuevas
 inician como `SCHEDULED` y `ONLINE`. Los cruces con citas activas o reservas
 fuera del horario laboral activo del barbero responden `409 Conflict`.
+
+Request `POST /api/v1/appointments/walk-ins`:
+
+```json
+{
+  "customerId": 1,
+  "barberId": 1,
+  "serviceOfferingId": 1,
+  "startAt": "2026-06-18T10:00:00",
+  "startImmediately": true
+}
+```
+
+Las citas walk-in se crean con `source = WALK_IN`. Si `startImmediately` es
+`true`, la cita queda en `IN_PROGRESS`; si es `false`, queda en `SCHEDULED`.
+Aplican las mismas reglas de cliente, barbero y servicio activos, horario
+laboral activo y no solape con citas bloqueantes. Los recursos inactivos, el
+solape y las citas fuera de horario responden `409 Conflict`.
 
 Transiciones de estado:
 

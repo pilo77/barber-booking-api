@@ -22,6 +22,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.villamil.barberbooking.application.dto.command.BookAppointmentCommand;
+import com.villamil.barberbooking.application.dto.command.CreateWalkInAppointmentCommand;
 import com.villamil.barberbooking.application.dto.response.AppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.BarberDailyScheduleResponse;
 import com.villamil.barberbooking.application.port.out.AppointmentRepositoryPort;
@@ -33,8 +34,8 @@ import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableExcept
 import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTransitionException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
-import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
+import com.villamil.barberbooking.domain.exception.ResourceInactiveException;
 import com.villamil.barberbooking.domain.model.Appointment;
 import com.villamil.barberbooking.domain.model.Barber;
 import com.villamil.barberbooking.domain.model.BarberWorkingHour;
@@ -105,7 +106,7 @@ class AppointmentServiceTest {
 		when(customerRepositoryPort.findById(1L)).thenReturn(Optional.of(customer(false)));
 
 		assertThatThrownBy(() -> service.book(command()))
-				.isInstanceOf(BusinessRuleException.class)
+				.isInstanceOf(ResourceInactiveException.class)
 				.hasMessage("Customer must be active");
 		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
 	}
@@ -118,7 +119,7 @@ class AppointmentServiceTest {
 		when(barberRepositoryPort.findById(2L)).thenReturn(Optional.of(barber(false)));
 
 		assertThatThrownBy(() -> service.book(command()))
-				.isInstanceOf(BusinessRuleException.class)
+				.isInstanceOf(ResourceInactiveException.class)
 				.hasMessage("Barber must be active");
 		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
 	}
@@ -132,7 +133,7 @@ class AppointmentServiceTest {
 		when(serviceOfferingRepositoryPort.findById(3L)).thenReturn(Optional.of(serviceOffering(false)));
 
 		assertThatThrownBy(() -> service.book(command()))
-				.isInstanceOf(BusinessRuleException.class)
+				.isInstanceOf(ResourceInactiveException.class)
 				.hasMessage("Service offering must be active");
 		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
 	}
@@ -161,6 +162,57 @@ class AppointmentServiceTest {
 		when(appointmentRepositoryPort.existsBlockingOverlap(2L, START_AT, START_AT.plusMinutes(30))).thenReturn(true);
 
 		assertThatThrownBy(() -> service.book(command()))
+				.isInstanceOf(AppointmentNotAvailableException.class)
+				.hasMessage("Appointment overlaps with an active appointment");
+		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
+	}
+
+	@Test
+	void createWalkInAppointmentImmediately() {
+		CreateWalkInAppointmentService service = walkInService();
+
+		mockActiveDependencies();
+		when(barberWorkingHourRepositoryPort.findActiveByBarberIdAndDay(2L, DayOfWeek.MONDAY))
+				.thenReturn(List.of(workingHour()));
+		when(appointmentRepositoryPort.existsBlockingOverlap(2L, START_AT, START_AT.plusMinutes(30))).thenReturn(false);
+		when(appointmentRepositoryPort.save(any(Appointment.class)))
+				.thenAnswer(invocation -> withId(invocation.getArgument(0)));
+
+		AppointmentResponse response = service.create(walkInCommand(true));
+
+		assertThat(response.id()).isEqualTo(1L);
+		assertThat(response.status()).isEqualTo(AppointmentStatus.IN_PROGRESS);
+		assertThat(response.source()).isEqualTo(AppointmentSource.WALK_IN);
+		assertThat(response.endAt()).isEqualTo(START_AT.plusMinutes(30));
+	}
+
+	@Test
+	void createWalkInAppointmentScheduled() {
+		CreateWalkInAppointmentService service = walkInService();
+
+		mockActiveDependencies();
+		when(barberWorkingHourRepositoryPort.findActiveByBarberIdAndDay(2L, DayOfWeek.MONDAY))
+				.thenReturn(List.of(workingHour()));
+		when(appointmentRepositoryPort.existsBlockingOverlap(2L, START_AT, START_AT.plusMinutes(30))).thenReturn(false);
+		when(appointmentRepositoryPort.save(any(Appointment.class)))
+				.thenAnswer(invocation -> withId(invocation.getArgument(0)));
+
+		AppointmentResponse response = service.create(walkInCommand(false));
+
+		assertThat(response.status()).isEqualTo(AppointmentStatus.SCHEDULED);
+		assertThat(response.source()).isEqualTo(AppointmentSource.WALK_IN);
+	}
+
+	@Test
+	void failWhenWalkInAppointmentOverlapsBlockingAppointment() {
+		CreateWalkInAppointmentService service = walkInService();
+
+		mockActiveDependencies();
+		when(barberWorkingHourRepositoryPort.findActiveByBarberIdAndDay(2L, DayOfWeek.MONDAY))
+				.thenReturn(List.of(workingHour()));
+		when(appointmentRepositoryPort.existsBlockingOverlap(2L, START_AT, START_AT.plusMinutes(30))).thenReturn(true);
+
+		assertThatThrownBy(() -> service.create(walkInCommand(true)))
 				.isInstanceOf(AppointmentNotAvailableException.class)
 				.hasMessage("Appointment overlaps with an active appointment");
 		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
@@ -227,6 +279,20 @@ class AppointmentServiceTest {
 	private BookAppointmentService service() {
 		return new BookAppointmentService(
 				appointmentRepositoryPort,
+				appointmentBookingPolicy()
+		);
+	}
+
+	private CreateWalkInAppointmentService walkInService() {
+		return new CreateWalkInAppointmentService(
+				appointmentRepositoryPort,
+				appointmentBookingPolicy()
+		);
+	}
+
+	private AppointmentBookingPolicy appointmentBookingPolicy() {
+		return new AppointmentBookingPolicy(
+				appointmentRepositoryPort,
 				customerRepositoryPort,
 				barberRepositoryPort,
 				serviceOfferingRepositoryPort,
@@ -236,6 +302,10 @@ class AppointmentServiceTest {
 
 	private BookAppointmentCommand command() {
 		return new BookAppointmentCommand(1L, 2L, 3L, START_AT);
+	}
+
+	private CreateWalkInAppointmentCommand walkInCommand(boolean startImmediately) {
+		return new CreateWalkInAppointmentCommand(1L, 2L, 3L, START_AT, startImmediately);
 	}
 
 	private void mockActiveDependencies() {

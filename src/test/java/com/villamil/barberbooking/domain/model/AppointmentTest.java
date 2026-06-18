@@ -26,6 +26,25 @@ class AppointmentTest {
 	}
 
 	@Test
+	void createWalkInAppointmentInProgress() {
+		LocalDateTime startAt = LocalDateTime.of(2026, 6, 17, 9, 0);
+
+		Appointment appointment = Appointment.create(
+				1L,
+				2L,
+				3L,
+				startAt,
+				30,
+				AppointmentSource.WALK_IN,
+				AppointmentStatus.IN_PROGRESS
+		);
+
+		assertThat(appointment.status()).isEqualTo(AppointmentStatus.IN_PROGRESS);
+		assertThat(appointment.source()).isEqualTo(AppointmentSource.WALK_IN);
+		assertThat(appointment.blocksAvailability()).isTrue();
+	}
+
+	@Test
 	void detectsOverlappingRanges() {
 		Appointment appointment = Appointment.create(
 				1L,
@@ -56,5 +75,19 @@ class AppointmentTest {
 				0,
 				AppointmentSource.ONLINE
 		)).isInstanceOf(BusinessRuleException.class);
+	}
+
+	@Test
+	void rejectsInvalidInitialStatus() {
+		assertThatThrownBy(() -> Appointment.create(
+				1L,
+				2L,
+				3L,
+				LocalDateTime.of(2026, 6, 17, 9, 0),
+				30,
+				AppointmentSource.WALK_IN,
+				AppointmentStatus.COMPLETED
+		)).isInstanceOf(BusinessRuleException.class)
+				.hasMessage("Appointment initial status must be scheduled or in-progress");
 	}
 }

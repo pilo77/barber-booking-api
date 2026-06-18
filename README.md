@@ -1,6 +1,6 @@
 # Barber Booking API
 
-API backend para reservas de barberia construida con Java 21, Spring Boot 3,
+API backend para reservas de barbería construida con Java 21, Spring Boot 3,
 PostgreSQL, Flyway, Testcontainers y arquitectura hexagonal.
 
 ## Estado actual
@@ -8,14 +8,13 @@ PostgreSQL, Flyway, Testcontainers y arquitectura hexagonal.
 Foundation inicial del proyecto:
 
 - Proyecto Spring Boot con Maven Wrapper.
-- Configuracion por variables de entorno.
+ - Configuración por variables de entorno.
 - Docker Compose local para PostgreSQL.
-- Migracion inicial de base de datos.
-- Modelo de dominio base y puertos de aplicacion.
-- Documentacion de arquitectura, contrato API y flujo Git.
- - Documentacion de arquitectura, contrato API y flujo Git.
- - Documentacion OpenAPI/Swagger y respuestas de error estandarizadas.
+ - Migración inicial de base de datos.
+ - Modelo de dominio base y puertos de aplicación.
+ - Documentación OpenAPI/Swagger y respuestas de error estandarizadas.
  - Reglas de negocio centralizadas: `docs/business-rules.md`.
+ - Swagger UI disponible en tiempo de ejecución: `http://localhost:8080/swagger-ui/index.html`.
  - Swagger UI disponible en tiempo de ejecucion: `http://localhost:8080/swagger-ui/index.html`.
 - CRUD de clientes con soft delete logico.
 - CRUD de barberos con activacion y desactivacion logica.
@@ -99,6 +98,18 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 - HU-08: Agenda diaria operativa del barbero.
 - HU-09: Ciclo de vida de la cita.
 - HU-10: Citas presenciales walk-in.
+
+## Documentación
+
+En este repositorio encontrarás la documentación principal del proyecto:
+
+- `docs/architecture.md` — Arquitectura del proyecto.
+- `docs/api-contract.md` — Contrato de la API y ejemplos.
+- `docs/business-rules.md` — Reglas de negocio centrales.
+- `docs/quality-audit.md` — Auditoría de calidad y recomendaciones.
+- `docs/technical-debt.md` — Deuda técnica y notas de decisión.
+- `docs/pre-push-checklist.md` — Lista de comprobación antes de subir el repositorio.
+
 
 ## Git
 

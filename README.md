@@ -19,6 +19,7 @@ Foundation inicial del proyecto:
 - Gestion de horarios laborales por barbero con control de cruces.
 - Reserva de citas online con validacion de disponibilidad y horario laboral.
 - Consulta de disponibilidad por slots segun servicio, horario laboral y citas activas.
+- Agenda diaria operativa del barbero con resumen por estado y ocupacion.
 
 ## Requisitos
 
@@ -89,7 +90,7 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 - HU-05: Horarios laborales por barbero.
 - HU-06: Agendar cita online.
 - HU-07: Consultar disponibilidad.
-- HU-08: Agenda diaria del barbero.
+- HU-08: Agenda diaria operativa del barbero.
 - HU-09: Walk-ins.
 - HU-10: Cambios de estado de cita.
 

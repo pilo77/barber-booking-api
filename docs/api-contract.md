@@ -230,3 +230,46 @@ del barbero, la duracion del servicio y las citas del dia. Solo bloquean
 `SCHEDULED` e `IN_PROGRESS`; `CANCELLED`, `COMPLETED` y `NO_SHOW` no bloquean.
 El paso de generacion de slots se configura con `BOOKING_SLOT_STEP_MINUTES`
 o `booking.slot-step-minutes` y por defecto es de 15 minutos.
+
+## Barber Daily Dashboard
+
+```http
+GET /api/v1/barbers/{barberId}/daily-dashboard?date=2026-06-17
+```
+
+Respuesta esperada:
+
+```json
+{
+  "barberId": 1,
+  "barberName": "Carlos Gomez",
+  "date": "2026-06-17",
+  "summary": {
+    "totalAppointments": 2,
+    "scheduled": 1,
+    "inProgress": 0,
+    "completed": 0,
+    "cancelled": 1,
+    "noShow": 0,
+    "occupiedMinutes": 30
+  },
+  "nextAppointment": {
+    "appointmentId": 1,
+    "customerId": 1,
+    "customerName": "Ana Perez",
+    "serviceOfferingId": 1,
+    "serviceName": "Corte clasico",
+    "startAt": "2026-06-17T09:00:00",
+    "endAt": "2026-06-17T09:30:00",
+    "status": "SCHEDULED",
+    "source": "ONLINE"
+  },
+  "appointments": []
+}
+```
+
+El dashboard lista solo citas del barbero en la fecha consultada, ordenadas por
+`startAt`. `occupiedMinutes` suma `SCHEDULED`, `IN_PROGRESS` y `COMPLETED`;
+`CANCELLED` y `NO_SHOW` no cuentan como ocupacion. `nextAppointment` toma la
+primera cita `SCHEDULED` o `IN_PROGRESS` que aun no haya terminado segun la hora
+actual del servidor.

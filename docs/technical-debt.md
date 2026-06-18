@@ -22,6 +22,10 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   `@Service`) están anotadas con Spring para facilitar inyección y pruebas.
   Esto es deliberado y aceptable en este proyecto; sin embargo no debe
   presentarse como "100% puro" hexagonal en entrevistas.
+- **Catálogo público de servicios por branch:** HU-20 valida que la branch
+  pertenece a la company pública, pero devuelve el catálogo visible de servicios
+  de esa company. La implementación de un catálogo de servicios específico por
+  branch queda para una HU futura.
 
 ## Decisiones tomadas
 

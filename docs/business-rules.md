@@ -78,6 +78,9 @@ Pendientes:
 - Solo branches activas se listan o consultan publicamente.
 - Solo services activos con `visible_for_online_booking=true` se listan
   publicamente.
+- El endpoint de servicios públicos de branch valida que la branch pertenece a la
+  company pública, pero devuelve el catálogo visible de servicios de esa company.
+  No existe un catálogo de servicios específico por branch en HU-20.
 - Solo barbers activos con `active_for_online_booking=true` se listan
   publicamente.
 - La respuesta publica puede exponer `service.id` y `barber.id` para preparar

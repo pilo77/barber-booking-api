@@ -177,6 +177,9 @@ Alcance implementado:
 - Sedes publicas por `companySlug`.
 - Sede publica por `companySlug + branchSlug` para evitar colisiones de slug.
 - Servicios activos y visibles para booking online.
+- El catálogo público de servicios sigue siendo company-scoped; la branch solo se
+  usa para validar el contexto público de la sucursal. Un catálogo por branch
+  queda para una HU futura.
 - Barberos activos y visibles para booking online.
 - Campos publicos opcionales para logo, descripcion, foto, bio y ordenamiento.
 - Proteccion para no exponer datos sensibles ni ids de tenant.

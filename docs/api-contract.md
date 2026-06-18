@@ -194,6 +194,9 @@ Reglas de exposicion:
 - Solo se devuelven companies activas.
 - Solo se devuelven branches activas.
 - Solo se devuelven services activos y `visibleForOnlineBooking=true`.
+- El endpoint de servicios públicos de branch valida que la branch pertenece a la
+  company pública, pero devuelve el catálogo visible de servicios de esa company.
+  No existe un catálogo de servicios específico por branch en HU-20.
 - Solo se devuelven barbers activos y `activeForOnlineBooking=true`.
 - Se pueden exponer `id` de service/barber porque HU-21 los usara para
   disponibilidad y reserva.

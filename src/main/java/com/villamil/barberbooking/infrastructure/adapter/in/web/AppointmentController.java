@@ -20,11 +20,13 @@ import com.villamil.barberbooking.application.dto.response.BarberDailyScheduleRe
 import com.villamil.barberbooking.application.port.in.BookAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.CancelAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.CompleteAppointmentUseCase;
+import com.villamil.barberbooking.application.port.in.CreateWalkInAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetBarberDailyAppointmentsUseCase;
 import com.villamil.barberbooking.application.port.in.MarkAppointmentNoShowUseCase;
 import com.villamil.barberbooking.application.port.in.StartAppointmentUseCase;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.dto.request.BookAppointmentRequest;
+import com.villamil.barberbooking.infrastructure.adapter.in.web.dto.request.CreateWalkInAppointmentRequest;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -41,6 +43,7 @@ public class AppointmentController {
 	private final StartAppointmentUseCase startAppointmentUseCase;
 	private final CompleteAppointmentUseCase completeAppointmentUseCase;
 	private final MarkAppointmentNoShowUseCase markAppointmentNoShowUseCase;
+	private final CreateWalkInAppointmentUseCase createWalkInAppointmentUseCase;
 
 	public AppointmentController(
 			BookAppointmentUseCase bookAppointmentUseCase,
@@ -49,7 +52,8 @@ public class AppointmentController {
 			CancelAppointmentUseCase cancelAppointmentUseCase,
 			StartAppointmentUseCase startAppointmentUseCase,
 			CompleteAppointmentUseCase completeAppointmentUseCase,
-			MarkAppointmentNoShowUseCase markAppointmentNoShowUseCase
+			MarkAppointmentNoShowUseCase markAppointmentNoShowUseCase,
+			CreateWalkInAppointmentUseCase createWalkInAppointmentUseCase
 	) {
 		this.bookAppointmentUseCase = bookAppointmentUseCase;
 		this.getAppointmentUseCase = getAppointmentUseCase;
@@ -58,11 +62,22 @@ public class AppointmentController {
 		this.startAppointmentUseCase = startAppointmentUseCase;
 		this.completeAppointmentUseCase = completeAppointmentUseCase;
 		this.markAppointmentNoShowUseCase = markAppointmentNoShowUseCase;
+		this.createWalkInAppointmentUseCase = createWalkInAppointmentUseCase;
 	}
 
 	@PostMapping("/appointments")
 	public ResponseEntity<AppointmentResponse> book(@Valid @RequestBody BookAppointmentRequest request) {
 		AppointmentResponse response = bookAppointmentUseCase.book(request.toCommand());
+		return ResponseEntity
+				.created(URI.create("/api/v1/appointments/" + response.id()))
+				.body(response);
+	}
+
+	@PostMapping("/appointments/walk-ins")
+	public ResponseEntity<AppointmentResponse> createWalkIn(
+			@Valid @RequestBody CreateWalkInAppointmentRequest request
+	) {
+		AppointmentResponse response = createWalkInAppointmentUseCase.create(request.toCommand());
 		return ResponseEntity
 				.created(URI.create("/api/v1/appointments/" + response.id()))
 				.body(response);

@@ -45,11 +45,35 @@ public record Appointment(
 			int durationMinutes,
 			AppointmentSource source
 	) {
+		return create(
+				customerId,
+				barberId,
+				serviceOfferingId,
+				startAt,
+				durationMinutes,
+				source,
+				AppointmentStatus.SCHEDULED
+		);
+	}
+
+	public static Appointment create(
+			Long customerId,
+			Long barberId,
+			Long serviceOfferingId,
+			LocalDateTime startAt,
+			int durationMinutes,
+			AppointmentSource source,
+			AppointmentStatus initialStatus
+	) {
 		if (durationMinutes <= 0) {
 			throw new BusinessRuleException("Appointment duration must be positive");
 		}
 		Objects.requireNonNull(startAt, "Appointment start date is required");
 		AppointmentSource appointmentSource = source == null ? AppointmentSource.ONLINE : source;
+		AppointmentStatus appointmentStatus = Objects.requireNonNull(initialStatus, "Appointment status is required");
+		if (appointmentStatus != AppointmentStatus.SCHEDULED && appointmentStatus != AppointmentStatus.IN_PROGRESS) {
+			throw new BusinessRuleException("Appointment initial status must be scheduled or in-progress");
+		}
 		return new Appointment(
 				null,
 				customerId,
@@ -57,7 +81,7 @@ public record Appointment(
 				serviceOfferingId,
 				startAt,
 				startAt.plusMinutes(durationMinutes),
-				AppointmentStatus.SCHEDULED,
+				appointmentStatus,
 				appointmentSource,
 				Instant.now(),
 				null

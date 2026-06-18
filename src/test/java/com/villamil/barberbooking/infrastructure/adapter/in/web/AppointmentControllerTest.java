@@ -30,11 +30,13 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.villamil.barberbooking.application.dto.command.BookAppointmentCommand;
+import com.villamil.barberbooking.application.dto.command.CreateWalkInAppointmentCommand;
 import com.villamil.barberbooking.application.dto.response.AppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.BarberDailyScheduleResponse;
 import com.villamil.barberbooking.application.port.in.BookAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.CancelAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.CompleteAppointmentUseCase;
+import com.villamil.barberbooking.application.port.in.CreateWalkInAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetBarberDailyAppointmentsUseCase;
 import com.villamil.barberbooking.application.port.in.MarkAppointmentNoShowUseCase;
@@ -43,6 +45,7 @@ import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTrans
 import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
+import com.villamil.barberbooking.domain.exception.ResourceInactiveException;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
 
@@ -74,6 +77,9 @@ class AppointmentControllerTest {
 	@Mock
 	private MarkAppointmentNoShowUseCase markAppointmentNoShowUseCase;
 
+	@Mock
+	private CreateWalkInAppointmentUseCase createWalkInAppointmentUseCase;
+
 	private MockMvc mockMvc;
 	private ObjectMapper objectMapper;
 
@@ -89,7 +95,8 @@ class AppointmentControllerTest {
 				cancelAppointmentUseCase,
 				startAppointmentUseCase,
 				completeAppointmentUseCase,
-				markAppointmentNoShowUseCase
+				markAppointmentNoShowUseCase,
+				createWalkInAppointmentUseCase
 		);
 		mockMvc = MockMvcBuilders.standaloneSetup(controller)
 				.setControllerAdvice(new GlobalExceptionHandler())
@@ -135,6 +142,67 @@ class AppointmentControllerTest {
 				.andExpect(jsonPath("$.title").value("Invalid request"));
 
 		verify(bookAppointmentUseCase, never()).book(any(BookAppointmentCommand.class));
+	}
+
+	@Test
+	void createWalkInAppointmentReturnsCreated() throws Exception {
+		when(createWalkInAppointmentUseCase.create(any(CreateWalkInAppointmentCommand.class)))
+				.thenReturn(appointment(AppointmentStatus.IN_PROGRESS, AppointmentSource.WALK_IN));
+
+		mockMvc.perform(post("/api/v1/appointments/walk-ins")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "customerId": 1,
+								  "barberId": 2,
+								  "serviceOfferingId": 3,
+								  "startAt": "2026-06-22T09:00:00",
+								  "startImmediately": true
+								}
+								"""))
+				.andExpect(status().isCreated())
+				.andExpect(header().string("Location", "/api/v1/appointments/1"))
+				.andExpect(jsonPath("$.status").value("IN_PROGRESS"))
+				.andExpect(jsonPath("$.source").value("WALK_IN"));
+	}
+
+	@Test
+	void rejectInvalidWalkInAppointmentRequest() throws Exception {
+		mockMvc.perform(post("/api/v1/appointments/walk-ins")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "customerId": 1,
+								  "barberId": 2,
+								  "serviceOfferingId": 3,
+								  "startAt": "2026-06-22T09:00:00",
+								  "startImmediately": null
+								}
+								"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.title").value("Invalid request"));
+
+		verify(createWalkInAppointmentUseCase, never()).create(any(CreateWalkInAppointmentCommand.class));
+	}
+
+	@Test
+	void inactiveWalkInResourceReturnsConflict() throws Exception {
+		when(createWalkInAppointmentUseCase.create(any(CreateWalkInAppointmentCommand.class)))
+				.thenThrow(new ResourceInactiveException("Barber must be active"));
+
+		mockMvc.perform(post("/api/v1/appointments/walk-ins")
+						.contentType(MediaType.APPLICATION_JSON)
+						.content("""
+								{
+								  "customerId": 1,
+								  "barberId": 2,
+								  "serviceOfferingId": 3,
+								  "startAt": "2026-06-22T09:00:00",
+								  "startImmediately": true
+								}
+								"""))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.title").value("Resource inactive"));
 	}
 
 	@Test
@@ -266,6 +334,10 @@ class AppointmentControllerTest {
 	}
 
 	private AppointmentResponse appointment(AppointmentStatus status) {
+		return appointment(status, AppointmentSource.ONLINE);
+	}
+
+	private AppointmentResponse appointment(AppointmentStatus status, AppointmentSource source) {
 		return new AppointmentResponse(
 				1L,
 				1L,
@@ -274,7 +346,7 @@ class AppointmentControllerTest {
 				START_AT,
 				START_AT.plusMinutes(30),
 				status,
-				AppointmentSource.ONLINE,
+				source,
 				CREATED_AT,
 				status == AppointmentStatus.CANCELLED ? UPDATED_AT : null
 		);

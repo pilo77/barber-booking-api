@@ -21,6 +21,7 @@ Foundation inicial del proyecto:
 - Consulta de disponibilidad por slots segun servicio, horario laboral y citas activas.
 - Agenda diaria operativa del barbero con resumen por estado y ocupacion.
 - Ciclo de vida de citas con transiciones controladas de estado.
+- Citas presenciales walk-in con inicio inmediato opcional.
 
 ## Requisitos
 
@@ -93,7 +94,7 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 - HU-07: Consultar disponibilidad.
 - HU-08: Agenda diaria operativa del barbero.
 - HU-09: Ciclo de vida de la cita.
-- HU-10: Walk-ins.
+- HU-10: Citas presenciales walk-in.
 
 ## Git
 

@@ -13,6 +13,27 @@ La aplicacion expone la especificacion OpenAPI y la UI de Swagger en:
 Estos endpoints estan habilitados desde la configuracion en la capa
 `infrastructure`.
 
+## Temporary Tenant Headers
+
+Hasta que exista Auth/RBAC, los endpoints existentes aceptan headers
+temporales para probar aislamiento multi-tenant:
+
+```http
+X-Company-Id: 1
+X-Branch-Id: 1
+```
+
+Reglas:
+
+- Si no se envian headers, la API usa la company y branch default (`1/1`).
+- `companyId` y `branchId` no se envian en el body de requests.
+- `X-Company-Id` scopea `customers` y `services`.
+- `X-Company-Id` + `X-Branch-Id` scopean `barbers`, `working-hours`,
+  `appointments`, `availability` y `daily-dashboard`.
+- Esta estrategia es temporal. En HU-18 el tenant debe salir del contexto de
+  seguridad/JWT. En HU-19 los endpoints publicos resolveran la barberia por
+  `slug`.
+
 ## Customers
 
 ```http

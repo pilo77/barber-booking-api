@@ -25,6 +25,12 @@ public class AppointmentJpaEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Column(name = "company_id", nullable = false)
+	private Long companyId;
+
+	@Column(name = "branch_id", nullable = false)
+	private Long branchId;
+
 	@Column(name = "customer_id", nullable = false)
 	private Long customerId;
 
@@ -59,6 +65,8 @@ public class AppointmentJpaEntity {
 
 	public AppointmentJpaEntity(
 			Long id,
+			Long companyId,
+			Long branchId,
 			Long customerId,
 			Long barberId,
 			Long serviceOfferingId,
@@ -70,6 +78,8 @@ public class AppointmentJpaEntity {
 			Instant updatedAt
 	) {
 		this.id = id;
+		this.companyId = companyId;
+		this.branchId = branchId;
 		this.customerId = customerId;
 		this.barberId = barberId;
 		this.serviceOfferingId = serviceOfferingId;
@@ -95,6 +105,14 @@ public class AppointmentJpaEntity {
 
 	public Long getId() {
 		return id;
+	}
+
+	public Long getCompanyId() {
+		return companyId;
+	}
+
+	public Long getBranchId() {
+		return branchId;
 	}
 
 	public Long getCustomerId() {

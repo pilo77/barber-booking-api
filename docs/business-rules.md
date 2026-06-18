@@ -9,6 +9,23 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
 - Las operaciones y validaciones deben comprobar `active=true` para considerar
   recursos como disponibles.
 
+## Multi-tenant
+
+- `Company` representa la barberia/empresa propietaria de los datos.
+- `Branch` representa una sede de una company.
+- `Customer` y `ServiceOffering` pertenecen a una company.
+- `Barber`, `BarberWorkingHour` y `Appointment` pertenecen a una company y una
+  branch.
+- Ningun request body debe enviar `companyId` ni `branchId`.
+- Hasta HU-18, el tenant se resuelve con headers temporales
+  `X-Company-Id` y `X-Branch-Id`; si no existen, se usa el tenant default.
+- Los casos de uso deben consultar recursos dentro del tenant actual. Si un
+  cliente, barbero, servicio u appointment existe en otra company/branch, debe
+  tratarse como no encontrado para el tenant actual.
+- La disponibilidad y el dashboard diario no deben mezclar citas de otra
+  company o branch.
+- Los nombres de servicios solo son unicos dentro de la misma company.
+
 ## Reglas de disponibilidad
 
 - Un `Barber` solo puede recibir citas si `barber.active == true`.

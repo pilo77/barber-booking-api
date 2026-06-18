@@ -45,11 +45,34 @@ Aqui si pueden vivir Spring MVC, Spring Data JPA, PostgreSQL, Flyway y OpenAPI.
 
 ## Modelo inicial
 
+- `Company`: empresa/barberia tenant del sistema SaaS.
+- `Branch`: sede de una `Company`; agrupa operacion fisica como barberos,
+  horarios y citas.
 - `Customer`: cliente de la barberia.
 - `Barber`: barbero que atiende citas.
 - `ServiceOffering`: servicio ofrecido, con duracion, precio y activacion logica.
 - `BarberWorkingHour`: horario laboral recurrente por dia y barbero.
 - `Appointment`: reserva o atencion walk-in.
+
+## Multi-tenant foundation
+
+La base SaaS usa `companyId` y `branchId` para aislar datos entre barberias.
+`Customer` y `ServiceOffering` quedan scopeados por `companyId`; `Barber`,
+`BarberWorkingHour` y `Appointment` quedan scopeados por `companyId` y
+`branchId`.
+
+Mientras no exista autenticacion (HU-18), el tenant se resuelve temporalmente
+en infraestructura con los headers HTTP:
+
+- `X-Company-Id`
+- `X-Branch-Id`
+
+Si los headers no llegan, los endpoints actuales usan la company y branch
+default (`1/1`) para mantener compatibilidad hacia atras. Los cuerpos de los
+requests no aceptan `companyId` ni `branchId`; el tenant se obtiene desde el
+contexto resuelto por infraestructura. En HU-18 este contexto debe migrar al
+contexto de seguridad/JWT. En HU-19 los endpoints publicos deben resolver la
+barberia por `slug`, no por ids enviados por el cliente.
 
 ## Regla anti doble reserva
 

@@ -34,6 +34,9 @@ public record UserAccount(
 			throw new BusinessRuleException("At least one role is required");
 		}
 		roles = Set.copyOf(roles);
+		if (barberId != null && (companyId == null || branchId == null)) {
+			throw new BusinessRuleException("Barber id requires assigned company and branch");
+		}
 		if (roles.contains(Role.BARBER) && barberId == null) {
 			throw new BusinessRuleException("Barber role requires barber id");
 		}

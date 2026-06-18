@@ -72,6 +72,46 @@ Response:
 }
 ```
 
+## Barber Working Hours
+
+```http
+POST   /api/v1/barbers/{barberId}/working-hours
+GET    /api/v1/barbers/{barberId}/working-hours
+GET    /api/v1/barbers/{barberId}/working-hours/{workingHourId}
+PUT    /api/v1/barbers/{barberId}/working-hours/{workingHourId}
+PATCH  /api/v1/barbers/{barberId}/working-hours/{workingHourId}/activate
+PATCH  /api/v1/barbers/{barberId}/working-hours/{workingHourId}/deactivate
+```
+
+Request `POST /api/v1/barbers/{barberId}/working-hours`:
+
+```json
+{
+  "dayOfWeek": "MONDAY",
+  "startTime": "08:00:00",
+  "endTime": "12:00:00"
+}
+```
+
+Response:
+
+```json
+{
+  "id": 1,
+  "barberId": 1,
+  "dayOfWeek": "MONDAY",
+  "startTime": "08:00:00",
+  "endTime": "12:00:00",
+  "active": true,
+  "createdAt": "2026-06-17T12:00:00Z",
+  "updatedAt": "2026-06-17T12:00:00Z"
+}
+```
+
+Los horarios no se borran fisicamente. La desactivacion se realiza con
+`PATCH /api/v1/barbers/{barberId}/working-hours/{workingHourId}/deactivate`.
+Los cruces entre horarios activos del mismo barbero y dia responden `409 Conflict`.
+
 ## Services
 
 ```http

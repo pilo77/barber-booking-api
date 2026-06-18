@@ -16,6 +16,7 @@ Foundation inicial del proyecto:
 - CRUD de clientes con soft delete logico.
 - CRUD de barberos con activacion y desactivacion logica.
 - CRUD de servicios ofrecidos con activacion y desactivacion logica.
+- Gestion de horarios laborales por barbero con control de cruces.
 
 ## Requisitos
 

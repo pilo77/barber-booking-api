@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.exception.BarberAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
+import com.villamil.barberbooking.domain.exception.BarberWorkingHourNotFoundException;
+import com.villamil.barberbooking.domain.exception.BarberWorkingHourOverlapException;
 import com.villamil.barberbooking.domain.exception.CustomerAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingAlreadyExistsException;
@@ -40,6 +42,20 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(BarberAlreadyExistsException.class)
 	public ResponseEntity<ProblemDetail> handleBarberAlreadyExists(BarberAlreadyExistsException exception) {
 		return problem(HttpStatus.CONFLICT, "Barber already exists", exception.getMessage());
+	}
+
+	@ExceptionHandler(BarberWorkingHourNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handleBarberWorkingHourNotFound(
+			BarberWorkingHourNotFoundException exception
+	) {
+		return problem(HttpStatus.NOT_FOUND, "Working hour not found", exception.getMessage());
+	}
+
+	@ExceptionHandler(BarberWorkingHourOverlapException.class)
+	public ResponseEntity<ProblemDetail> handleBarberWorkingHourOverlap(
+			BarberWorkingHourOverlapException exception
+	) {
+		return problem(HttpStatus.CONFLICT, "Working hour overlap", exception.getMessage());
 	}
 
 	@ExceptionHandler(ServiceOfferingNotFoundException.class)

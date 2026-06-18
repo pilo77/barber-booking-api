@@ -204,14 +204,29 @@ Respuesta esperada:
 ```json
 {
   "barberId": 1,
+  "serviceOfferingId": 1,
   "date": "2026-06-17",
   "slots": [
     {
-      "startTime": "08:00",
-      "endTime": "08:30",
+      "startAt": "2026-06-17T08:00:00",
+      "endAt": "2026-06-17T08:30:00",
       "status": "AVAILABLE",
-      "color": "GREEN"
+      "color": "GREEN",
+      "available": true
+    },
+    {
+      "startAt": "2026-06-17T08:30:00",
+      "endAt": "2026-06-17T09:00:00",
+      "status": "OCCUPIED",
+      "color": "RED",
+      "available": false
     }
   ]
 }
 ```
+
+La disponibilidad se calcula dinamicamente con los horarios laborales activos
+del barbero, la duracion del servicio y las citas del dia. Solo bloquean
+`SCHEDULED` e `IN_PROGRESS`; `CANCELLED`, `COMPLETED` y `NO_SHOW` no bloquean.
+El paso de generacion de slots se configura con `BOOKING_SLOT_STEP_MINUTES`
+o `booking.slot-step-minutes` y por defecto es de 15 minutos.

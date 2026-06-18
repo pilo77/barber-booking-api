@@ -18,6 +18,7 @@ Foundation inicial del proyecto:
 - CRUD de servicios ofrecidos con activacion y desactivacion logica.
 - Gestion de horarios laborales por barbero con control de cruces.
 - Reserva de citas online con validacion de disponibilidad y horario laboral.
+- Consulta de disponibilidad por slots segun servicio, horario laboral y citas activas.
 
 ## Requisitos
 
@@ -36,6 +37,9 @@ Copy-Item .env.example .env
 ```
 
 2. Edita `.env` y reemplaza los placeholders. No subas `.env` al repositorio.
+
+   `BOOKING_SLOT_STEP_MINUTES` controla cada cuantos minutos se evalua un
+   inicio posible de cita. El valor por defecto es `15`.
 
 3. Levanta PostgreSQL:
 

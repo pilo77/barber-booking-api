@@ -34,8 +34,12 @@ import com.villamil.barberbooking.application.dto.response.AppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.BarberDailyScheduleResponse;
 import com.villamil.barberbooking.application.port.in.BookAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.CancelAppointmentUseCase;
+import com.villamil.barberbooking.application.port.in.CompleteAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetBarberDailyAppointmentsUseCase;
+import com.villamil.barberbooking.application.port.in.MarkAppointmentNoShowUseCase;
+import com.villamil.barberbooking.application.port.in.StartAppointmentUseCase;
+import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTransitionException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
@@ -61,6 +65,15 @@ class AppointmentControllerTest {
 	@Mock
 	private CancelAppointmentUseCase cancelAppointmentUseCase;
 
+	@Mock
+	private StartAppointmentUseCase startAppointmentUseCase;
+
+	@Mock
+	private CompleteAppointmentUseCase completeAppointmentUseCase;
+
+	@Mock
+	private MarkAppointmentNoShowUseCase markAppointmentNoShowUseCase;
+
 	private MockMvc mockMvc;
 	private ObjectMapper objectMapper;
 
@@ -73,7 +86,10 @@ class AppointmentControllerTest {
 				bookAppointmentUseCase,
 				getAppointmentUseCase,
 				getBarberDailyAppointmentsUseCase,
-				cancelAppointmentUseCase
+				cancelAppointmentUseCase,
+				startAppointmentUseCase,
+				completeAppointmentUseCase,
+				markAppointmentNoShowUseCase
 		);
 		mockMvc = MockMvcBuilders.standaloneSetup(controller)
 				.setControllerAdvice(new GlobalExceptionHandler())
@@ -199,6 +215,54 @@ class AppointmentControllerTest {
 		mockMvc.perform(patch("/api/v1/appointments/1/cancel"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value("CANCELLED"));
+	}
+
+	@Test
+	void startAppointmentReturnsOk() throws Exception {
+		when(startAppointmentUseCase.start(1L)).thenReturn(appointment(AppointmentStatus.IN_PROGRESS));
+
+		mockMvc.perform(patch("/api/v1/appointments/1/start"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("IN_PROGRESS"));
+	}
+
+	@Test
+	void completeAppointmentReturnsOk() throws Exception {
+		when(completeAppointmentUseCase.complete(1L)).thenReturn(appointment(AppointmentStatus.COMPLETED));
+
+		mockMvc.perform(patch("/api/v1/appointments/1/complete"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("COMPLETED"));
+	}
+
+	@Test
+	void markAppointmentNoShowReturnsOk() throws Exception {
+		when(markAppointmentNoShowUseCase.markNoShow(1L)).thenReturn(appointment(AppointmentStatus.NO_SHOW));
+
+		mockMvc.perform(patch("/api/v1/appointments/1/no-show"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value("NO_SHOW"));
+	}
+
+	@Test
+	void invalidAppointmentTransitionReturnsConflict() throws Exception {
+		when(completeAppointmentUseCase.complete(1L))
+				.thenThrow(new AppointmentInvalidStatusTransitionException(
+						"Only in-progress appointments can be completed"
+				));
+
+		mockMvc.perform(patch("/api/v1/appointments/1/complete"))
+				.andExpect(status().isConflict())
+				.andExpect(jsonPath("$.title").value("Invalid appointment transition"));
+	}
+
+	@Test
+	void lifecycleMissingAppointmentReturnsNotFound() throws Exception {
+		when(startAppointmentUseCase.start(99L)).thenThrow(new AppointmentNotFoundException("Appointment not found"));
+
+		mockMvc.perform(patch("/api/v1/appointments/99/start"))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.title").value("Appointment not found"));
 	}
 
 	private AppointmentResponse appointment(AppointmentStatus status) {

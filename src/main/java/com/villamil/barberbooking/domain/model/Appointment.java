@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTransitionException;
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
@@ -74,19 +75,29 @@ public record Appointment(
 	}
 
 	public Appointment cancel() {
+		ensureStatus(AppointmentStatus.SCHEDULED, "Only scheduled appointments can be cancelled");
 		return changeStatus(AppointmentStatus.CANCELLED);
 	}
 
 	public Appointment start() {
+		ensureStatus(AppointmentStatus.SCHEDULED, "Only scheduled appointments can be started");
 		return changeStatus(AppointmentStatus.IN_PROGRESS);
 	}
 
 	public Appointment complete() {
+		ensureStatus(AppointmentStatus.IN_PROGRESS, "Only in-progress appointments can be completed");
 		return changeStatus(AppointmentStatus.COMPLETED);
 	}
 
 	public Appointment markNoShow() {
+		ensureStatus(AppointmentStatus.SCHEDULED, "Only scheduled appointments can be marked as no-show");
 		return changeStatus(AppointmentStatus.NO_SHOW);
+	}
+
+	private void ensureStatus(AppointmentStatus expectedStatus, String message) {
+		if (status != expectedStatus) {
+			throw new AppointmentInvalidStatusTransitionException(message);
+		}
 	}
 
 	private Appointment changeStatus(AppointmentStatus newStatus) {

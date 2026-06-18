@@ -20,6 +20,7 @@ Foundation inicial del proyecto:
 - Reserva de citas online con validacion de disponibilidad y horario laboral.
 - Consulta de disponibilidad por slots segun servicio, horario laboral y citas activas.
 - Agenda diaria operativa del barbero con resumen por estado y ocupacion.
+- Ciclo de vida de citas con transiciones controladas de estado.
 
 ## Requisitos
 
@@ -91,8 +92,8 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 - HU-06: Agendar cita online.
 - HU-07: Consultar disponibilidad.
 - HU-08: Agenda diaria operativa del barbero.
-- HU-09: Walk-ins.
-- HU-10: Cambios de estado de cita.
+- HU-09: Ciclo de vida de la cita.
+- HU-10: Walk-ins.
 
 ## Git
 

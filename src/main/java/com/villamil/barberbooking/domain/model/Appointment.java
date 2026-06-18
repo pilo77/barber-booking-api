@@ -12,19 +12,20 @@ public record Appointment(
 		Long id,
 		Long customerId,
 		Long barberId,
-		Long serviceId,
+		Long serviceOfferingId,
 		LocalDateTime startAt,
 		LocalDateTime endAt,
 		AppointmentStatus status,
 		AppointmentSource source,
-		Instant createdAt
+		Instant createdAt,
+		Instant updatedAt
 ) {
 
 	public Appointment {
 		validateId(id, "Appointment id");
 		customerId = requirePositive(customerId, "Customer id is required");
 		barberId = requirePositive(barberId, "Barber id is required");
-		serviceId = requirePositive(serviceId, "Service id is required");
+		serviceOfferingId = requirePositive(serviceOfferingId, "Service offering id is required");
 		Objects.requireNonNull(startAt, "Appointment start date is required");
 		Objects.requireNonNull(endAt, "Appointment end date is required");
 		Objects.requireNonNull(status, "Appointment status is required");
@@ -38,7 +39,7 @@ public record Appointment(
 	public static Appointment create(
 			Long customerId,
 			Long barberId,
-			Long serviceId,
+			Long serviceOfferingId,
 			LocalDateTime startAt,
 			int durationMinutes,
 			AppointmentSource source
@@ -46,17 +47,19 @@ public record Appointment(
 		if (durationMinutes <= 0) {
 			throw new BusinessRuleException("Appointment duration must be positive");
 		}
+		Objects.requireNonNull(startAt, "Appointment start date is required");
 		AppointmentSource appointmentSource = source == null ? AppointmentSource.ONLINE : source;
 		return new Appointment(
 				null,
 				customerId,
 				barberId,
-				serviceId,
+				serviceOfferingId,
 				startAt,
 				startAt.plusMinutes(durationMinutes),
 				AppointmentStatus.SCHEDULED,
 				appointmentSource,
-				Instant.now()
+				Instant.now(),
+				null
 		);
 	}
 
@@ -87,7 +90,18 @@ public record Appointment(
 	}
 
 	private Appointment changeStatus(AppointmentStatus newStatus) {
-		return new Appointment(id, customerId, barberId, serviceId, startAt, endAt, newStatus, source, createdAt);
+		return new Appointment(
+				id,
+				customerId,
+				barberId,
+				serviceOfferingId,
+				startAt,
+				endAt,
+				newStatus,
+				source,
+				createdAt,
+				Instant.now()
+		);
 	}
 
 	private static Long requirePositive(Long value, String message) {

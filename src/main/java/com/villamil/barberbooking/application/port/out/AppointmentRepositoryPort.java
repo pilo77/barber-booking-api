@@ -13,7 +13,7 @@ public interface AppointmentRepositoryPort {
 
 	Optional<Appointment> findById(Long id);
 
-	boolean existsOverlappingAppointment(Long barberId, LocalDateTime startAt, LocalDateTime endAt);
+	boolean existsBlockingOverlap(Long barberId, LocalDateTime startAt, LocalDateTime endAt);
 
 	List<Appointment> findByBarberIdAndDate(Long barberId, LocalDate date);
 }

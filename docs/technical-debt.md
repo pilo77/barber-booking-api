@@ -39,9 +39,41 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
 - Añadir documentación en `README.md` sobre cómo ejecutar tests con Docker en
   Windows y cómo configurar CI para que ejecute las pruebas de integración.
 - Reemplazar los headers temporales `X-Company-Id` y `X-Branch-Id` por tenant
-  derivado del contexto de seguridad/JWT en HU-18. Mientras tanto, estos
-  headers son solo una estrategia de compatibilidad y pruebas internas, no un
-  mecanismo final de seguridad.
+  derivado del contexto de seguridad/JWT en HU-18. Estado: implementado como
+  prioridad principal. Los headers siguen existiendo como fallback temporal
+  cuando no hay usuario autenticado.
+- Limitar rol `BARBER` a su propio barbero requiere una relacion formal
+  `user_account -> barber`; queda pendiente para una HU futura.
+- `COMPANY_OWNER` actualmente crea usuarios en el tenant/branch derivado del
+  JWT. La gestion completa multi-branch de usuarios dentro de una company queda
+  pendiente.
+
+## HU-18 Auth/RBAC limitations
+
+HU-18 implementa una base funcional de autenticacion y RBAC, pero no debe
+tratarse como autorizacion final de produccion. La autorizacion actual combina
+roles y paths de Spring Security con validaciones de tenant en casos de uso.
+Esto sirve como foundation, pero todavia no implementa ownership authorization
+fina por recurso, operacion y relacion del usuario con la entidad operativa.
+
+Limitaciones documentadas antes de merge:
+
+- RBAC actual es por rol/path, no por ownership completo.
+- Falta una relacion formal `user_account -> barber`.
+- `BARBER` todavia no queda limitado estrictamente a su propia agenda,
+  dashboard y citas.
+- `BRANCH_MANAGER` requiere reglas finas por operacion dentro de su branch.
+- `RECEPTIONIST` requiere permisos operativos mas precisos por modulo.
+- Algunos roles internos tienen acceso amplio a modulos que no siempre
+  necesitan para su responsabilidad final.
+- JWT todavia no incluye validacion de issuer, audience ni `jti`; debe
+  endurecerse antes de produccion.
+- Falta auditoria persistente de acciones sensibles como bootstrap, login
+  fallido repetido, creacion/desactivacion de usuarios y cambios de roles.
+
+Decision: crear como siguiente HU obligatoria `HU-19: Authorization hardening
+and ownership rules` antes de construir perfil publico, caja, pagos o
+inventario.
 
 ## Referencias
 

@@ -26,6 +26,13 @@ server:
 booking:
   slot-step-minutes: ${BOOKING_SLOT_STEP_MINUTES:15}
 
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET:local-dev-only-change-this-secret-with-at-least-32-chars}
+    expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:60}
+  bootstrap:
+    token: ${APP_BOOTSTRAP_TOKEN:}
+
 management:
   endpoints:
     web:

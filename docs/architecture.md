@@ -54,25 +54,42 @@ Aqui si pueden vivir Spring MVC, Spring Data JPA, PostgreSQL, Flyway y OpenAPI.
 - `BarberWorkingHour`: horario laboral recurrente por dia y barbero.
 - `Appointment`: reserva o atencion walk-in.
 
-## Multi-tenant foundation
+## Multi-tenant foundation and Auth/RBAC
 
 La base SaaS usa `companyId` y `branchId` para aislar datos entre barberias.
 `Customer` y `ServiceOffering` quedan scopeados por `companyId`; `Barber`,
 `BarberWorkingHour` y `Appointment` quedan scopeados por `companyId` y
 `branchId`.
 
-Mientras no exista autenticacion (HU-18), el tenant se resuelve temporalmente
-en infraestructura con los headers HTTP:
+Desde HU-18, los endpoints administrativos resuelven el tenant desde el usuario
+autenticado por JWT. El token contiene:
+
+- `userId`
+- `email`
+- `companyId`
+- `branchId`
+- `roles`
+
+La prioridad de resolucion es:
+
+1. JWT valido en `Authorization: Bearer <token>`.
+2. Headers temporales de desarrollo/testing si no hay usuario autenticado.
+3. Tenant default `1/1`.
+
+Los headers HTTP temporales son:
 
 - `X-Company-Id`
 - `X-Branch-Id`
 
-Si los headers no llegan, los endpoints actuales usan la company y branch
-default (`1/1`) para mantener compatibilidad hacia atras. Los cuerpos de los
-requests no aceptan `companyId` ni `branchId`; el tenant se obtiene desde el
-contexto resuelto por infraestructura. En HU-18 este contexto debe migrar al
-contexto de seguridad/JWT. En HU-19 los endpoints publicos deben resolver la
-barberia por `slug`, no por ids enviados por el cliente.
+Si existe JWT valido, los headers no pueden sobrescribir `companyId` ni
+`branchId`. Los cuerpos de los requests no aceptan `companyId` ni `branchId`;
+el tenant se obtiene desde el contexto resuelto por infraestructura. En HU-19
+los endpoints publicos deben resolver la barberia por `slug`, no por ids
+enviados por el cliente.
+
+La seguridad vive en `infrastructure.config.SecurityConfig` y adapters de
+`infrastructure.security`. El dominio mantiene `UserAccount` y `Role` sin
+dependencias de Spring Security, JPA ni HTTP.
 
 ## Regla anti doble reserva
 

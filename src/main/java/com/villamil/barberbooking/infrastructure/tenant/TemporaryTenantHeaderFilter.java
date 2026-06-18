@@ -6,11 +6,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.villamil.barberbooking.application.tenant.TenantContext;
+import com.villamil.barberbooking.infrastructure.security.AuthenticatedUserPrincipal;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @Component
 public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
@@ -44,6 +47,15 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 	}
 
 	private TenantContext resolveTenant(HttpServletRequest request) {
+		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+		if (authentication != null
+				&& authentication.isAuthenticated()
+				&& authentication.getPrincipal() instanceof AuthenticatedUserPrincipal principal) {
+			if (principal.user().companyId() != null && principal.user().branchId() != null) {
+				return new TenantContext(principal.user().companyId(), principal.user().branchId());
+			}
+			return TenantContext.DEFAULT;
+		}
 		Long companyId = parsePositiveHeader(request, COMPANY_HEADER, TenantContext.DEFAULT_COMPANY_ID);
 		Long branchId = parsePositiveHeader(request, BRANCH_HEADER, TenantContext.DEFAULT_BRANCH_ID);
 		return new TenantContext(companyId, branchId);

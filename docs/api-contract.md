@@ -15,8 +15,15 @@ Estos endpoints estan habilitados desde la configuracion en la capa
 
 ## Temporary Tenant Headers
 
-Hasta que exista Auth/RBAC, los endpoints existentes aceptan headers
-temporales para probar aislamiento multi-tenant:
+Desde HU-18, los endpoints administrativos usan JWT Bearer. El tenant real se
+resuelve primero desde el usuario autenticado:
+
+- `companyId`
+- `branchId`
+- `roles`
+
+Los headers temporales siguen disponibles solo como fallback de desarrollo o
+testing cuando no hay usuario autenticado:
 
 ```http
 X-Company-Id: 1
@@ -25,14 +32,111 @@ X-Branch-Id: 1
 
 Reglas:
 
-- Si no se envian headers, la API usa la company y branch default (`1/1`).
+- Si hay JWT valido, los headers no pueden sobrescribir `companyId` ni
+  `branchId`.
+- Si no hay JWT y no se envian headers, la API usa la company y branch default
+  (`1/1`).
 - `companyId` y `branchId` no se envian en el body de requests.
 - `X-Company-Id` scopea `customers` y `services`.
 - `X-Company-Id` + `X-Branch-Id` scopean `barbers`, `working-hours`,
   `appointments`, `availability` y `daily-dashboard`.
-- Esta estrategia es temporal. En HU-18 el tenant debe salir del contexto de
-  seguridad/JWT. En HU-19 los endpoints publicos resolveran la barberia por
-  `slug`.
+- Esta estrategia de headers es temporal. En HU-19/HU-20 los endpoints publicos
+  resolveran la barberia por `slug`, no por ids enviados por el cliente.
+
+## Auth and RBAC
+
+Endpoints publicos:
+
+```http
+POST /api/v1/auth/bootstrap
+POST /api/v1/auth/login
+GET  /actuator/health
+GET  /swagger-ui/**
+GET  /v3/api-docs/**
+```
+
+`POST /api/v1/auth/bootstrap` solo crea el primer usuario si no existe ningun
+registro en `user_accounts`. Requiere header:
+
+```http
+X-Bootstrap-Token: <APP_BOOTSTRAP_TOKEN>
+```
+
+Request:
+
+```json
+{
+  "email": "owner@example.com",
+  "password": "StrongPassword123!",
+  "fullName": "Owner User"
+}
+```
+
+El usuario inicial queda como `COMPANY_OWNER` del tenant default `1/1`. El
+password se guarda con BCrypt y nunca se devuelve.
+
+`POST /api/v1/auth/login`:
+
+```json
+{
+  "email": "owner@example.com",
+  "password": "StrongPassword123!"
+}
+```
+
+Response:
+
+```json
+{
+  "accessToken": "...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": {
+    "id": 1,
+    "email": "owner@example.com",
+    "fullName": "Owner User",
+    "companyId": 1,
+    "branchId": 1,
+    "roles": ["COMPANY_OWNER"]
+  }
+}
+```
+
+Los endpoints protegidos deben enviar:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+`GET /api/v1/auth/me` devuelve el usuario autenticado.
+
+## User Accounts
+
+Endpoints protegidos:
+
+```http
+POST  /api/v1/user-accounts
+GET   /api/v1/user-accounts
+GET   /api/v1/user-accounts/{id}
+PATCH /api/v1/user-accounts/{id}/activate
+PATCH /api/v1/user-accounts/{id}/deactivate
+```
+
+Request `POST /api/v1/user-accounts`:
+
+```json
+{
+  "email": "reception@example.com",
+  "password": "StrongPassword123!",
+  "fullName": "Reception User",
+  "phone": "3001234567",
+  "roles": ["RECEPTIONIST"]
+}
+```
+
+El body no acepta `companyId` ni `branchId`; esos valores se derivan del JWT
+del usuario autenticado. `COMPANY_OWNER` puede crear roles operativos internos,
+pero no `PLATFORM_OWNER`, `COMPANY_OWNER` ni `CUSTOMER` desde este endpoint.
 
 ## Customers
 

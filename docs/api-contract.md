@@ -3,6 +3,16 @@
 Version base de endpoints planeados. La implementacion debe avanzar por
 historias de usuario pequenas y testeadas.
 
+## Swagger / OpenAPI
+
+La aplicacion expone la especificacion OpenAPI y la UI de Swagger en:
+
+- `/v3/api-docs` (JSON OpenAPI)
+- `/swagger-ui/index.html` (Swagger UI)
+
+Estos endpoints estan habilitados desde la configuracion en la capa
+`infrastructure`.
+
 ## Customers
 
 ```http

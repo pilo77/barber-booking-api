@@ -61,3 +61,51 @@ Una cita se cruza con otra cuando:
 ```text
 existing.startAt < new.endAt AND existing.endAt > new.startAt
 ```
+
+## Arquitectura Hexagonal (Portos y Adaptadores)
+
+El proyecto sigue el estilo de arquitectura hexagonal para mantener bajo
+acoplamiento y permitir pruebas aisladas del dominio. Las capas principales son:
+
+- `domain`: modelos, value objects, reglas de negocio y excepciones. Sin
+  dependencias de infraestructura (Spring, JPA, HTTP, etc.).
+- `application`: casos de uso, DTOs, servicios de aplicacion y puertos.
+  - `port.in`: puertos de entrada que describen las capacidades del sistema.
+  - `port.out`: puertos de salida que describen dependencias externas (repos,
+    integraciones).
+- `infrastructure`: adaptadores que implementan puertos, configuracion, REST,
+  persistencia e integraciones externas.
+
+Los adaptadores traducen entre el mundo externo (HTTP, JPA, eventos) y los
+puertos del dominio. Esto permite reemplazar implementaciones (por ejemplo,
+persistencia o clientes HTTP) sin afectar la logica de negocio.
+
+### Puertos de entrada y salida
+
+- Puertos de entrada (`port.in`) son interfaces que exponen casos de uso a los
+  adaptadores web o de otro tipo.
+- Puertos de salida (`port.out`) son interfaces que la aplicacion necesita para
+  persistir o consultar datos.
+- Los adaptadores implementan estos puertos en la capa `infrastructure`.
+
+### Adaptadores
+
+- Adaptadores de entrada: controladores REST que traducen solicitudes HTTP a
+  comandos de aplicacion.
+- Adaptadores de salida: repositorios JPA, clientes externos y otros.
+
+## Políticas y componentes importantes
+
+- `AppointmentBookingPolicy`: componente de aplicacion que centraliza las
+  decisiones de reservacion para evitar duplicacion de reglas entre citas
+  `ONLINE` y `WALK_IN`. Esta politica valida existencia/actividad de recursos,
+  cruces y las reglas de transicion de estado.
+- `GlobalExceptionHandler`: manejador en la capa web que estandariza las
+  respuestas de error (timestamp, status, error, message, path, code) y mapea
+  excepciones de aplicacion a códigos y estados HTTP consistentes.
+- OpenAPI/Swagger: la configuracion de Swagger se encuentra en la capa
+  `infrastructure` y expone la UI y el JSON de especificacion para consumidores
+  e integracion continua.
+
+Estas decisiones permiten que la logica de negocio sea testeable y que la API
+sea consistente para clientes y frontend.

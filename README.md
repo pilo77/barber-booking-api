@@ -15,6 +15,8 @@ Foundation inicial del proyecto:
 - Documentacion de arquitectura, contrato API y flujo Git.
  - Documentacion de arquitectura, contrato API y flujo Git.
  - Documentacion OpenAPI/Swagger y respuestas de error estandarizadas.
+ - Reglas de negocio centralizadas: `docs/business-rules.md`.
+ - Swagger UI disponible en tiempo de ejecucion: `http://localhost:8080/swagger-ui/index.html`.
 - CRUD de clientes con soft delete logico.
 - CRUD de barberos con activacion y desactivacion logica.
 - CRUD de servicios ofrecidos con activacion y desactivacion logica.

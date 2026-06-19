@@ -129,6 +129,36 @@ class TemporaryTenantHeaderFilterTest {
 		assertThat(response.getStatus()).isEqualTo(400);
 	}
 
+	@Test
+	void shouldIgnoreTenantHeadersForPublicRoutes() throws ServletException, IOException {
+		MockHttpServletRequest request = new MockHttpServletRequest(
+				"GET",
+				"/api/v1/public/barber-shops/ponte-perro"
+		);
+		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "invalid");
+		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "999");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		CapturingFilterChain chain = new CapturingFilterChain(tenantContextProvider);
+
+		filter.doFilter(request, response, chain);
+
+		assertThat(chain.tenantContext).isEqualTo(TenantContext.DEFAULT);
+		assertThat(response.getStatus()).isEqualTo(200);
+	}
+
+	@Test
+	void shouldRestorePreviousTenantAfterScopedPublicExecution() {
+		tenantContextProvider.set(new TenantContext(2L, 3L));
+
+		TenantContext inside = tenantContextProvider.withTenant(
+				new TenantContext(7L, 9L),
+				tenantContextProvider::currentTenant
+		);
+
+		assertThat(inside).isEqualTo(new TenantContext(7L, 9L));
+		assertThat(tenantContextProvider.currentTenant()).isEqualTo(new TenantContext(2L, 3L));
+	}
+
 	private static class CapturingFilterChain extends MockFilterChain {
 
 		private final ThreadLocalTenantContextProvider tenantContextProvider;

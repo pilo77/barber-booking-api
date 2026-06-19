@@ -10,6 +10,12 @@ public interface BarberJpaRepository extends JpaRepository<BarberJpaEntity, Long
 
 	Optional<BarberJpaEntity> findByIdAndCompanyIdAndBranchId(Long id, Long companyId, Long branchId);
 
+	Optional<BarberJpaEntity> findByIdAndCompanyIdAndBranchIdAndActiveTrueAndActiveForOnlineBookingTrue(
+			Long id,
+			Long companyId,
+			Long branchId
+	);
+
 	List<BarberJpaEntity> findAllByCompanyIdAndBranchIdOrderByIdAsc(Long companyId, Long branchId);
 
 	List<BarberJpaEntity> findAllByCompanyIdAndBranchIdAndActiveTrueAndActiveForOnlineBookingTrueOrderBySortOrderAscIdAsc(

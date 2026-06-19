@@ -3,10 +3,13 @@ package com.villamil.barberbooking.infrastructure.adapter.in.web;
 import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -19,16 +22,23 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.villamil.barberbooking.application.dto.response.AvailabilitySlotResponse;
+import com.villamil.barberbooking.application.dto.response.BarberAvailabilityResponse;
+import com.villamil.barberbooking.application.dto.response.PublicAppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBranchResponse;
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
+import com.villamil.barberbooking.application.port.in.CreatePublicAppointmentUseCase;
+import com.villamil.barberbooking.application.port.in.GetPublicBarberAvailabilityUseCase;
 import com.villamil.barberbooking.application.port.in.GetPublicBarberShopUseCase;
 import com.villamil.barberbooking.application.port.in.GetPublicBranchUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicBarbersUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicBranchesUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicServicesUseCase;
 import com.villamil.barberbooking.domain.exception.PublicResourceNotFoundException;
+import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
+import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
 
 @ExtendWith(MockitoExtension.class)
 class PublicBarberShopControllerTest {
@@ -48,6 +58,12 @@ class PublicBarberShopControllerTest {
 	@Mock
 	private ListPublicBarbersUseCase listPublicBarbersUseCase;
 
+	@Mock
+	private GetPublicBarberAvailabilityUseCase getPublicBarberAvailabilityUseCase;
+
+	@Mock
+	private CreatePublicAppointmentUseCase createPublicAppointmentUseCase;
+
 	private MockMvc mockMvc;
 
 	@BeforeEach
@@ -58,7 +74,9 @@ class PublicBarberShopControllerTest {
 				listPublicBranchesUseCase,
 				getPublicBranchUseCase,
 				listPublicServicesUseCase,
-				listPublicBarbersUseCase
+				listPublicBarbersUseCase,
+				getPublicBarberAvailabilityUseCase,
+				createPublicAppointmentUseCase
 		);
 		mockMvc = MockMvcBuilders.standaloneSetup(controller)
 				.setControllerAdvice(new GlobalExceptionHandler())
@@ -150,5 +168,84 @@ class PublicBarberShopControllerTest {
 				.andExpect(jsonPath("$[0].displayName").value("Santiago"))
 				.andExpect(jsonPath("$[0].email").doesNotExist())
 				.andExpect(jsonPath("$[0].phone").doesNotExist());
+	}
+
+	@Test
+	void getPublicAvailabilityReturnsSlots() throws Exception {
+		LocalDate date = LocalDate.now().plusDays(1);
+		when(getPublicBarberAvailabilityUseCase.getAvailability("ponte-perro", "neiva-centro", 2L, 1L, date))
+				.thenReturn(new BarberAvailabilityResponse(
+						2L,
+						1L,
+						date,
+						List.of(AvailabilitySlotResponse.available(
+								LocalDateTime.of(2026, 6, 20, 10, 0),
+								LocalDateTime.of(2026, 6, 20, 10, 30)
+						))
+				));
+
+		mockMvc.perform(get("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/barbers/2/availability")
+					.param("date", date.toString())
+					.param("serviceOfferingId", "1"))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.slots[0].available").value(true));
+	}
+
+	@Test
+	void createPublicAppointmentReturnsCreatedWithoutSensitiveFields() throws Exception {
+		LocalDateTime startAt = LocalDateTime.of(2026, 6, 20, 10, 0);
+		String futureStartAt = LocalDateTime.now().plusDays(1).withNano(0).toString();
+		when(createPublicAppointmentUseCase.create(org.mockito.ArgumentMatchers.any()))
+				.thenReturn(new PublicAppointmentResponse(
+						10L,
+						AppointmentStatus.SCHEDULED,
+						AppointmentSource.ONLINE,
+						startAt,
+						startAt.plusMinutes(30),
+						new PublicAppointmentResponse.ServiceSummary(1L, "Corte clasico", 30, new BigDecimal("25000.00")),
+						new PublicAppointmentResponse.BarberSummary(2L, "Santiago", null),
+						new PublicAppointmentResponse.CustomerSummary("Carlos Villamil", "3001234567")
+				));
+
+		mockMvc.perform(post("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/appointments")
+					.contentType("application/json")
+					.content("""
+							{
+							  "serviceOfferingId": 1,
+							  "barberId": 2,
+							  "startAt": "%s",
+							  "customer": {
+							    "fullName": "Carlos Villamil",
+							    "phone": "3001234567",
+							    "email": "cliente@example.com"
+							  }
+							}
+							""".formatted(futureStartAt)))
+				.andExpect(status().isCreated())
+				.andExpect(jsonPath("$.source").value("ONLINE"))
+				.andExpect(jsonPath("$.status").value("SCHEDULED"))
+				.andExpect(jsonPath("$.customer.phone").value("3001234567"))
+				.andExpect(jsonPath("$.customer.email").doesNotExist())
+				.andExpect(jsonPath("$.customerId").doesNotExist());
+	}
+
+	@Test
+	void publicAppointmentRejectsTenantAndCustomerIdsFromBody() throws Exception {
+		String futureStartAt = LocalDateTime.now().plusDays(1).withNano(0).toString();
+		mockMvc.perform(post("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/appointments")
+					.contentType("application/json")
+					.content("""
+							{
+							  "companyId": 99,
+							  "branchId": 99,
+							  "customerId": 99,
+							  "endAt": "%s",
+							  "serviceOfferingId": 1,
+							  "barberId": 2,
+							  "startAt": "%s",
+							  "customer": {"fullName": "Carlos", "phone": "3001234567"}
+							}
+							""".formatted(futureStartAt, futureStartAt)))
+				.andExpect(status().isBadRequest());
 	}
 }

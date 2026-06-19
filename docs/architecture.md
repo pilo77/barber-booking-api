@@ -84,8 +84,10 @@ Los headers HTTP temporales son:
 Si existe JWT valido, los headers no pueden sobrescribir `companyId` ni
 `branchId`. Los cuerpos de los requests no aceptan `companyId` ni `branchId`;
 el tenant se obtiene desde el contexto resuelto por infraestructura. En HU-19
-los endpoints publicos deben resolver la barberia por `slug`, no por ids
-enviados por el cliente.
+los endpoints publicos resuelven la barberia por `companySlug + branchSlug`, no
+por ids enviados por el cliente. `TenantContextExecutor` instala ese contexto
+solo durante el caso de uso publico y restaura el contexto anterior al salir.
+El filtro temporal ignora headers de tenant en rutas `/api/v1/public/**`.
 
 La seguridad vive en `infrastructure.config.SecurityConfig` y adapters de
 `infrastructure.security`. El dominio mantiene `UserAccount` y `Role` sin
@@ -144,6 +146,14 @@ persistencia o clientes HTTP) sin afectar la logica de negocio.
   capa `application` por practicidad. Esto facilita la inyección en los
   casos de uso pero introduce una dependencia a Spring en la capa de
   aplicación.
+
+- `BarberAvailabilityCalculator`: componente compartido por disponibilidad
+  administrativa y publica. Calcula slots desde horarios y citas bloqueantes;
+  la autorizacion y la visibilidad publica se validan antes de invocarlo.
+
+- `PublicBookingService`: resuelve tenant y visibilidad por slugs, ejecuta los
+  repositorios tenant-aware dentro de un contexto acotado, reutiliza o crea el
+  customer por telefono y delega horarios/solape a `AppointmentBookingPolicy`.
 
 - `GlobalExceptionHandler`: manejador en la capa web que estandariza las
   respuestas de error (timestamp, status, error, message, path, code) y mapea

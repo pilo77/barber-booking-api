@@ -10,6 +10,7 @@ import com.villamil.barberbooking.application.dto.response.PublicBarberShopRespo
 import com.villamil.barberbooking.application.dto.response.PublicBranchResponse;
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
 import com.villamil.barberbooking.application.port.out.PublicBarberShopRepositoryPort;
+import com.villamil.barberbooking.application.tenant.PublicTenantContext;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.BarberJpaEntity;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.BranchJpaEntity;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.CompanyJpaEntity;
@@ -84,6 +85,33 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 						.map(this::toPublicBarber)
 						.toList())
 				.orElseGet(List::of);
+	}
+
+	@Override
+	public Optional<PublicTenantContext> findActiveTenantBySlugs(String companySlug, String branchSlug) {
+		return findActiveCompanyAndBranch(companySlug, branchSlug)
+				.map(branch -> new PublicTenantContext(branch.getCompanyId(), branch.getId()));
+	}
+
+	@Override
+	public Optional<PublicServiceOfferingResponse> findVisibleServiceByCompanyId(
+			Long companyId,
+			Long serviceOfferingId
+	) {
+		return serviceOfferingJpaRepository
+				.findByIdAndCompanyIdAndActiveTrueAndVisibleForOnlineBookingTrue(serviceOfferingId, companyId)
+				.map(this::toPublicService);
+	}
+
+	@Override
+	public Optional<PublicBarberResponse> findVisibleBarberByTenant(Long companyId, Long branchId, Long barberId) {
+		return barberJpaRepository
+				.findByIdAndCompanyIdAndBranchIdAndActiveTrueAndActiveForOnlineBookingTrue(
+						barberId,
+						companyId,
+						branchId
+				)
+				.map(this::toPublicBarber);
 	}
 
 	private Optional<BranchJpaEntity> findActiveCompanyAndBranch(String companySlug, String branchSlug) {

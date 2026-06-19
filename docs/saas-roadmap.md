@@ -167,7 +167,7 @@ Pendiente para hardening posterior:
 
 Exponer perfil publico de barberia/sucursal/barbero para reserva online.
 
-Estado actual: implementada en rama de HU-20. Agrega endpoints publicos de
+Estado actual: integrada en `develop`. Agrega endpoints publicos de
 solo lectura para consultar company/barberia, branches, services visibles y
 barbers visibles por slug, sin requerir JWT.
 
@@ -184,9 +184,9 @@ Alcance implementado:
 - Campos publicos opcionales para logo, descripcion, foto, bio y ordenamiento.
 - Proteccion para no exponer datos sensibles ni ids de tenant.
 
-Fuera de alcance:
+Fuera de alcance de HU-20:
 
-- Crear citas publicas.
+- Crear citas publicas (implementado posteriormente por HU-21).
 - Portal de cliente.
 - Ratings.
 - Pagos, caja e inventario.
@@ -196,12 +196,24 @@ Fuera de alcance:
 Permitir que un cliente seleccione sucursal, servicio, barbero y slot
 disponible.
 
-Alcance recomendado:
+Estado actual: implementada en rama de HU-21.
+
+Alcance implementado:
 
 - Disponibilidad tenant-aware.
 - Slots por sucursal y barbero.
 - Politicas contra doble reserva.
-- Confirmacion de reserva online.
+- Reserva online sin JWT con `source=ONLINE` y `status=SCHEDULED`.
+- Tenant publico resuelto por `companySlug + branchSlug`, sin headers.
+- Creacion o reutilizacion de customer por company + phone.
+- Rechazo de services/barbers no visibles o fuera del tenant publico.
+
+Fuera de alcance:
+
+- Pagos.
+- Cancelacion o reprogramacion publica.
+- Portal de cliente y ratings.
+- Catalogo de services por branch; requiere `branch_services`.
 
 ### HU-22 Cash register foundation
 

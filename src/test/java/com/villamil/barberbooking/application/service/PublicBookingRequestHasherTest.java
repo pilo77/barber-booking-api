@@ -18,8 +18,8 @@ class PublicBookingRequestHasherTest {
 		CreatePublicAppointmentCommand first = command("Ponte-Perro", " Carlos Villamil ", "CLIENTE@EXAMPLE.COM");
 		CreatePublicAppointmentCommand second = command("ponte-perro", "carlos villamil", "cliente@example.com");
 
-		assertThat(hasher.hash(first)).isEqualTo(hasher.hash(second));
-		assertThat(hasher.hash(first)).hasSize(64);
+		assertThat(hasher.hash(first, 7L, 9L)).isEqualTo(hasher.hash(second, 7L, 9L));
+		assertThat(hasher.hash(first, 7L, 9L)).hasSize(64);
 	}
 
 	@Test
@@ -32,7 +32,8 @@ class PublicBookingRequestHasherTest {
 				"same-key-123", "127.0.0.1"
 		);
 
-		assertThat(hasher.hash(first)).isNotEqualTo(hasher.hash(second));
+		assertThat(hasher.hash(first, 7L, 9L)).isNotEqualTo(hasher.hash(second, 7L, 9L));
+		assertThat(hasher.hash(first, 7L, 9L)).isNotEqualTo(hasher.hash(first, 7L, 10L));
 	}
 
 	private CreatePublicAppointmentCommand command(String companySlug, String fullName, String email) {

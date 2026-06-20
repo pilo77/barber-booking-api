@@ -13,10 +13,10 @@ import com.villamil.barberbooking.application.dto.command.CreatePublicAppointmen
 @Component
 class PublicBookingRequestHasher {
 
-	String hash(CreatePublicAppointmentCommand command) {
+	String hash(CreatePublicAppointmentCommand command, Long companyId, Long branchId) {
 		String canonical = String.join("\n",
-				normalizeCaseInsensitive(command.companySlug()),
-				normalizeCaseInsensitive(command.branchSlug()),
+				String.valueOf(companyId),
+				String.valueOf(branchId),
 				String.valueOf(command.serviceOfferingId()),
 				String.valueOf(command.barberId()),
 				command.startAt().toString(),

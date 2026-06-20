@@ -114,6 +114,21 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 				.map(this::toPublicBarber);
 	}
 
+	@Override
+	public Optional<PublicServiceOfferingResponse> findServiceSnapshotByCompanyId(
+			Long companyId,
+			Long serviceOfferingId
+	) {
+		return serviceOfferingJpaRepository.findByIdAndCompanyId(serviceOfferingId, companyId)
+				.map(this::toPublicService);
+	}
+
+	@Override
+	public Optional<PublicBarberResponse> findBarberSnapshotByTenant(Long companyId, Long branchId, Long barberId) {
+		return barberJpaRepository.findByIdAndCompanyIdAndBranchId(barberId, companyId, branchId)
+				.map(this::toPublicBarber);
+	}
+
 	private Optional<BranchJpaEntity> findActiveCompanyAndBranch(String companySlug, String branchSlug) {
 		return companyJpaRepository.findBySlugAndActiveTrue(companySlug)
 				.flatMap(company -> branchJpaRepository.findByCompanyIdAndSlugAndActiveTrue(company.getId(), branchSlug));

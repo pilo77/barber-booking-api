@@ -115,6 +115,9 @@ Pendientes:
   misma key con datos diferentes responde `409 Conflict`.
 - La fila idempotente y la cita se confirman en una misma transaccion; la
   restriccion unica tenant-aware evita dos citas ante requests concurrentes.
+- Solo se persisten estados `IN_PROGRESS` y `COMPLETED`. No se persiste
+  `FAILED`: cualquier error de booking revierte la misma transaccion y elimina
+  el claim `IN_PROGRESS`, permitiendo reintentar la key sin dejarla bloqueada.
 - Solo las keys nuevas consumen rate limit. Los reintentos idempotentes
   completados no consumen una cuota adicional.
 - El rate limit MVP es 10 intentos por IP/minuto y 3 por

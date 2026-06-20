@@ -7,42 +7,42 @@ import org.springframework.stereotype.Component;
 
 @Component
 @ConfigurationProperties(prefix = "booking.public.rate-limit")
-class PublicBookingRateLimitProperties {
+public class PublicBookingRateLimitProperties {
 
 	private int ipMaxAttempts = 10;
 	private Duration ipWindow = Duration.ofMinutes(1);
 	private int phoneMaxAttempts = 3;
 	private Duration phoneWindow = Duration.ofMinutes(10);
 
-	int getIpMaxAttempts() {
+	public int getIpMaxAttempts() {
 		return ipMaxAttempts;
 	}
 
-	void setIpMaxAttempts(int ipMaxAttempts) {
+	public void setIpMaxAttempts(int ipMaxAttempts) {
 		this.ipMaxAttempts = ipMaxAttempts;
 	}
 
-	Duration getIpWindow() {
+	public Duration getIpWindow() {
 		return ipWindow;
 	}
 
-	void setIpWindow(Duration ipWindow) {
+	public void setIpWindow(Duration ipWindow) {
 		this.ipWindow = ipWindow;
 	}
 
-	int getPhoneMaxAttempts() {
+	public int getPhoneMaxAttempts() {
 		return phoneMaxAttempts;
 	}
 
-	void setPhoneMaxAttempts(int phoneMaxAttempts) {
+	public void setPhoneMaxAttempts(int phoneMaxAttempts) {
 		this.phoneMaxAttempts = phoneMaxAttempts;
 	}
 
-	Duration getPhoneWindow() {
+	public Duration getPhoneWindow() {
 		return phoneWindow;
 	}
 
-	void setPhoneWindow(Duration phoneWindow) {
+	public void setPhoneWindow(Duration phoneWindow) {
 		this.phoneWindow = phoneWindow;
 	}
 }

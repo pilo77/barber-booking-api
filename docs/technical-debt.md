@@ -62,6 +62,10 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   o WAF y evaluar captcha/challenge adaptativo.
 - Las filas idempotentes no tienen limpieza automatica todavia. Definir una
   retencion y un job seguro antes de que el volumen sea significativo.
+- No existe estado persistido `FAILED`: el diseño actual revierte el claim
+  `IN_PROGRESS` junto con la reserva fallida. Si en el futuro el procesamiento
+  se separa en transacciones o colas, habrá que introducir recuperación de
+  claims expirados y estado de fallo reintentable.
 - Dos keys distintas concurrentes para un customer nuevo con el mismo telefono
   todavia pueden competir por la restriccion unica de customer y devolver 409.
 

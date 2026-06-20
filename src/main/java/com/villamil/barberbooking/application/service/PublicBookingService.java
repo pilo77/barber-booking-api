@@ -92,25 +92,25 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 	public PublicAppointmentResponse create(CreatePublicAppointmentCommand command) {
 		String idempotencyKey = validateIdempotencyKey(command.idempotencyKey());
 		PublicTenantContext tenant = resolveTenant(command.companySlug(), command.branchSlug());
-		PublicServiceOfferingResponse service = requireVisibleService(tenant, command.serviceOfferingId());
-		PublicBarberResponse barber = requireVisibleBarber(tenant, command.barberId());
 		Customer requestedCustomer = Customer.create(
 				command.customer().fullName(),
 				command.customer().phone(),
 				command.customer().email()
 		);
 
-		String requestHash = publicBookingRequestHasher.hash(command);
+		String requestHash = publicBookingRequestHasher.hash(command, tenant.companyId(), tenant.branchId());
 
 		return tenantContextExecutor.withTenant(tenant.toTenantContext(), () -> {
 			boolean started = publicBookingIdempotencyPort.tryStart(idempotencyKey, requestHash);
 			if (!started) {
-				return replayExisting(idempotencyKey, requestHash, service, barber, requestedCustomer);
+				return replayExisting(idempotencyKey, requestHash, tenant, command, requestedCustomer);
 			}
 
 			publicBookingRateLimiter.check(
 					command.remoteAddress(), tenant.companyId(), tenant.branchId(), requestedCustomer.phone()
 			);
+			PublicServiceOfferingResponse service = requireVisibleService(tenant, command.serviceOfferingId());
+			PublicBarberResponse barber = requireVisibleBarber(tenant, command.barberId());
 			Customer customer = findOrCreateCustomer(requestedCustomer);
 			Appointment appointment = appointmentBookingPolicy.createValidatedAppointment(
 					customer.id(),
@@ -135,8 +135,8 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 	private PublicAppointmentResponse replayExisting(
 			String idempotencyKey,
 			String requestHash,
-			PublicServiceOfferingResponse service,
-			PublicBarberResponse barber,
+			PublicTenantContext tenant,
+			CreatePublicAppointmentCommand command,
 			Customer requestedCustomer
 	) {
 		PublicBookingIdempotencyRecord existing = publicBookingIdempotencyPort.find(idempotencyKey)
@@ -150,6 +150,14 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 		}
 		Appointment appointment = appointmentRepositoryPort.findById(existing.appointmentId())
 				.orElseThrow(() -> new IllegalStateException("Idempotent appointment was not found"));
+		PublicServiceOfferingResponse service = publicBarberShopRepositoryPort.findServiceSnapshotByCompanyId(
+				tenant.companyId(), command.serviceOfferingId()
+		)
+				.orElseThrow(() -> new IllegalStateException("Idempotent service snapshot was not found"));
+		PublicBarberResponse barber = publicBarberShopRepositoryPort.findBarberSnapshotByTenant(
+				tenant.companyId(), tenant.branchId(), command.barberId()
+		)
+				.orElseThrow(() -> new IllegalStateException("Idempotent barber snapshot was not found"));
 		return PublicAppointmentResponse.from(
 				appointment,
 				service,

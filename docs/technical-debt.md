@@ -52,6 +52,23 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   JWT. La gestion completa multi-branch de usuarios dentro de una company queda
   pendiente.
 
+## HU-22 public booking anti-abuse limitations
+
+- El rate limiter de booking publico vive en memoria y se aplica por instancia.
+  Reiniciar o escalar horizontalmente el backend reinicia o divide las cuotas.
+- La IP usada es `HttpServletRequest.getRemoteAddr()`. No se procesa
+  `X-Forwarded-For` hasta definir una lista/configuracion de proxies confiables.
+- Antes de exposicion publica de alto trafico, mover cuotas a Redis, API Gateway
+  o WAF y evaluar captcha/challenge adaptativo.
+- Las filas idempotentes no tienen limpieza automatica todavia. Definir una
+  retencion y un job seguro antes de que el volumen sea significativo.
+- No existe estado persistido `FAILED`: el diseño actual revierte el claim
+  `IN_PROGRESS` junto con la reserva fallida. Si en el futuro el procesamiento
+  se separa en transacciones o colas, habrá que introducir recuperación de
+  claims expirados y estado de fallo reintentable.
+- Dos keys distintas concurrentes para un customer nuevo con el mismo telefono
+  todavia pueden competir por la restriccion unica de customer y devolver 409.
+
 ## HU-18/HU-19 Auth/RBAC limitations
 
 HU-18 implemento una base funcional de autenticacion y RBAC. HU-19 agrego

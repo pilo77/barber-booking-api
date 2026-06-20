@@ -207,13 +207,15 @@ Reglas de exposicion:
 
 ## Public Availability and Booking
 
-HU-21 permite consultar slots y reservar sin login. El tenant se resuelve
+HU-21 permite consultar slots y reservar sin login. HU-22 agrega idempotencia
+y rate limiting basico al POST publico. El tenant se resuelve
 exclusivamente desde `companySlug + branchSlug`; los headers `X-Company-Id` y
 `X-Branch-Id` se ignoran para rutas publicas.
 
 ```http
 GET  /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/barbers/{barberId}/availability?date=2026-06-20&serviceOfferingId=1
 POST /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/appointments
+Idempotency-Key: booking-7f6a6e7d-2df8-4f55-ae67
 ```
 
 La disponibilidad devuelve el mismo formato de slots documentado en
@@ -238,6 +240,12 @@ Request de reserva publica:
 `companyId`, `branchId`, `customerId` y `endAt` no se aceptan en el request
 publico. `startAt` debe ser futuro y `endAt` se calcula con la duracion del
 servicio.
+
+`Idempotency-Key` es obligatorio para el POST. Debe tener entre 8 y 128
+caracteres y solo puede contener letras, numeros, `.`, `_`, `:` y `-`. La key
+se aisla por `companyId + branchId`; la misma key y el mismo request devuelve
+la cita ya creada sin duplicarla, mientras que reutilizarla con otro request
+responde `409 Conflict`.
 
 Response `201 Created`:
 
@@ -279,6 +287,13 @@ Reglas:
   `AppointmentBookingPolicy`.
 - Recurso no publicable: `404`. Horario invalido, solape o recurso interno
   inactivo: `409` segun el manejador existente.
+- Header idempotente ausente o invalido: `400 Bad Request`.
+- Misma key con payload diferente: `409 Conflict`.
+- Limite antiabuso excedido: `429 Too Many Requests`.
+- El rate limit MVP permite 10 intentos por IP por minuto y 3 intentos por
+  `company + branch + phone` cada 10 minutos. Los valores son configurables.
+- Para este MVP la IP es `request.getRemoteAddr()`. No se confia en
+  `X-Forwarded-For` hasta configurar proxies confiables.
 - No hay pagos, cancelacion publica ni reprogramacion publica en HU-21.
 - Los servicios siguen siendo company-wide. El catalogo por sede requiere una
   relacion futura `branch_services`.

@@ -34,11 +34,33 @@ import com.villamil.barberbooking.domain.exception.ServiceOfferingAlreadyExistsE
 import com.villamil.barberbooking.domain.exception.ServiceOfferingNotFoundException;
 import com.villamil.barberbooking.domain.exception.UserAccountAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.UserAccountNotFoundException;
+import com.villamil.barberbooking.application.exception.IdempotencyConflictException;
+import com.villamil.barberbooking.application.exception.InvalidIdempotencyKeyException;
+import com.villamil.barberbooking.application.exception.MissingIdempotencyKeyException;
+import com.villamil.barberbooking.application.exception.PublicBookingRateLimitExceededException;
 
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler({MissingIdempotencyKeyException.class, InvalidIdempotencyKeyException.class})
+	public ResponseEntity<ProblemDetail> handleInvalidIdempotencyKey(RuntimeException exception, HttpServletRequest request) {
+		return problem(HttpStatus.BAD_REQUEST, "Invalid idempotency key", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(IdempotencyConflictException.class)
+	public ResponseEntity<ProblemDetail> handleIdempotencyConflict(IdempotencyConflictException exception, HttpServletRequest request) {
+		return problem(HttpStatus.CONFLICT, "Idempotency conflict", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(PublicBookingRateLimitExceededException.class)
+	public ResponseEntity<ProblemDetail> handlePublicBookingRateLimit(
+			PublicBookingRateLimitExceededException exception,
+			HttpServletRequest request
+	) {
+		return problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests", exception.getMessage(), request, exception);
+	}
 
 	@ExceptionHandler(AppointmentNotFoundException.class)
 	public ResponseEntity<ProblemDetail> handleAppointmentNotFound(AppointmentNotFoundException exception, HttpServletRequest request) {

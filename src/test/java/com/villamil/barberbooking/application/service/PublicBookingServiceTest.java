@@ -29,9 +29,14 @@ import com.villamil.barberbooking.application.dto.response.BarberAvailabilityRes
 import com.villamil.barberbooking.application.dto.response.PublicAppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberResponse;
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
+import com.villamil.barberbooking.application.exception.IdempotencyConflictException;
+import com.villamil.barberbooking.application.exception.InvalidIdempotencyKeyException;
+import com.villamil.barberbooking.application.exception.MissingIdempotencyKeyException;
+import com.villamil.barberbooking.application.idempotency.PublicBookingIdempotencyRecord;
 import com.villamil.barberbooking.application.port.out.AppointmentRepositoryPort;
 import com.villamil.barberbooking.application.port.out.CustomerRepositoryPort;
 import com.villamil.barberbooking.application.port.out.PublicBarberShopRepositoryPort;
+import com.villamil.barberbooking.application.port.out.PublicBookingIdempotencyPort;
 import com.villamil.barberbooking.application.port.out.TenantContextExecutor;
 import com.villamil.barberbooking.application.tenant.PublicTenantContext;
 import com.villamil.barberbooking.application.tenant.TenantContext;
@@ -67,6 +72,15 @@ class PublicBookingServiceTest {
 	@Mock
 	private AppointmentRepositoryPort appointmentRepositoryPort;
 
+	@Mock
+	private PublicBookingIdempotencyPort publicBookingIdempotencyPort;
+
+	@Mock
+	private PublicBookingRequestHasher publicBookingRequestHasher;
+
+	@Mock
+	private PublicBookingRateLimiter publicBookingRateLimiter;
+
 	private PublicBookingService service;
 
 	@BeforeEach
@@ -77,7 +91,10 @@ class PublicBookingServiceTest {
 				barberAvailabilityCalculator,
 				customerRepositoryPort,
 				appointmentBookingPolicy,
-				appointmentRepositoryPort
+				appointmentRepositoryPort,
+				publicBookingIdempotencyPort,
+				publicBookingRequestHasher,
+				publicBookingRateLimiter
 		);
 	}
 
@@ -136,6 +153,7 @@ class PublicBookingServiceTest {
 		Appointment saved = appointment(10L);
 		executeTenantActions();
 		mockPublicResources();
+		mockNewIdempotentRequest();
 		when(customerRepositoryPort.findByPhone("3001234567")).thenReturn(Optional.of(customer));
 		when(appointmentBookingPolicy.createValidatedAppointment(
 				5L, 2L, 1L, START_AT, AppointmentSource.ONLINE, AppointmentStatus.SCHEDULED))
@@ -151,6 +169,7 @@ class PublicBookingServiceTest {
 		assertThat(response.customer().phone()).isEqualTo("3001234567");
 		assertThat(response.customer().fullName()).isEqualTo("Carlos Villamil");
 		verify(customerRepositoryPort, never()).save(any());
+		verify(publicBookingIdempotencyPort).complete("booking-key-123", 10L);
 	}
 
 	@Test
@@ -159,6 +178,7 @@ class PublicBookingServiceTest {
 		Appointment unsaved = appointment(null);
 		executeTenantActions();
 		mockPublicResources();
+		mockNewIdempotentRequest();
 		when(customerRepositoryPort.findByPhone("3001234567")).thenReturn(Optional.empty());
 		when(customerRepositoryPort.save(any(Customer.class))).thenReturn(savedCustomer);
 		when(appointmentBookingPolicy.createValidatedAppointment(
@@ -174,20 +194,26 @@ class PublicBookingServiceTest {
 
 	@Test
 	void invisibleServiceCannotBeBooked() {
+		executeTenantActions();
 		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
 				.thenReturn(Optional.of(PUBLIC_TENANT));
+		mockNewIdempotentRequest();
 		when(publicBarberShopRepositoryPort.findVisibleServiceByCompanyId(7L, 1L))
 				.thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.create(command()))
 				.isInstanceOf(PublicResourceNotFoundException.class)
 				.hasMessage("Public service offering not found");
+		verify(publicBookingRateLimiter).check("127.0.0.1", 7L, 9L, "3001234567");
+		verify(publicBookingIdempotencyPort, never()).complete(any(), any());
 	}
 
 	@Test
 	void barberFromAnotherBranchCannotBeBooked() {
+		executeTenantActions();
 		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
 				.thenReturn(Optional.of(PUBLIC_TENANT));
+		mockNewIdempotentRequest();
 		when(publicBarberShopRepositoryPort.findVisibleServiceByCompanyId(7L, 1L))
 				.thenReturn(Optional.of(publicService()));
 		when(publicBarberShopRepositoryPort.findVisibleBarberByTenant(7L, 9L, 2L))
@@ -196,6 +222,8 @@ class PublicBookingServiceTest {
 		assertThatThrownBy(() -> service.create(command()))
 				.isInstanceOf(PublicResourceNotFoundException.class)
 				.hasMessage("Public barber not found");
+		verify(publicBookingRateLimiter).check("127.0.0.1", 7L, 9L, "3001234567");
+		verify(publicBookingIdempotencyPort, never()).complete(any(), any());
 	}
 
 	@Test
@@ -203,6 +231,7 @@ class PublicBookingServiceTest {
 		Customer customer = customer(5L, "Carlos Villamil");
 		executeTenantActions();
 		mockPublicResources();
+		mockNewIdempotentRequest();
 		when(customerRepositoryPort.findByPhone("3001234567")).thenReturn(Optional.of(customer));
 		when(appointmentBookingPolicy.createValidatedAppointment(
 				5L, 2L, 1L, START_AT, AppointmentSource.ONLINE, AppointmentStatus.SCHEDULED))
@@ -219,6 +248,73 @@ class PublicBookingServiceTest {
 				.isInstanceOf(AppointmentNotAvailableException.class);
 	}
 
+	@Test
+	void missingIdempotencyKeyIsRejectedBeforeBooking() {
+		CreatePublicAppointmentCommand command = command(null, "127.0.0.1");
+
+		assertThatThrownBy(() -> service.create(command))
+				.isInstanceOf(MissingIdempotencyKeyException.class)
+				.hasMessage("Idempotency-Key header is required");
+		verify(publicBarberShopRepositoryPort, never()).findActiveTenantBySlugs(any(), any());
+	}
+
+	@Test
+	void invalidIdempotencyKeyIsRejectedBeforeBooking() {
+		CreatePublicAppointmentCommand command = command("bad key", "127.0.0.1");
+
+		assertThatThrownBy(() -> service.create(command))
+				.isInstanceOf(InvalidIdempotencyKeyException.class)
+				.hasMessageContaining("8 to 128 characters");
+		verify(publicBarberShopRepositoryPort, never()).findActiveTenantBySlugs(any(), any());
+	}
+
+	@Test
+	void sameIdempotencyKeyAndRequestReplaysAppointmentWithoutCreatingAnother() {
+		executeTenantActions();
+		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
+				.thenReturn(Optional.of(PUBLIC_TENANT));
+		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("same-hash");
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn(false);
+		when(publicBookingIdempotencyPort.find("booking-key-123")).thenReturn(Optional.of(
+				new PublicBookingIdempotencyRecord(
+						"same-hash", 10L, PublicBookingIdempotencyRecord.Status.COMPLETED
+				)
+		));
+		when(appointmentRepositoryPort.findById(10L)).thenReturn(Optional.of(appointment(10L)));
+		when(publicBarberShopRepositoryPort.findServiceSnapshotByCompanyId(7L, 1L))
+				.thenReturn(Optional.of(publicService()));
+		when(publicBarberShopRepositoryPort.findBarberSnapshotByTenant(7L, 9L, 2L))
+				.thenReturn(Optional.of(publicBarber()));
+
+		PublicAppointmentResponse response = service.create(command());
+
+		assertThat(response.id()).isEqualTo(10L);
+		verify(publicBookingRateLimiter, never()).check(any(), any(), any(), any());
+		verify(customerRepositoryPort, never()).findByPhone(any());
+		verify(appointmentRepositoryPort, never()).save(any());
+	}
+
+	@Test
+	void sameIdempotencyKeyWithDifferentRequestReturnsConflict() {
+		executeTenantActions();
+		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
+				.thenReturn(Optional.of(PUBLIC_TENANT));
+		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("new-hash");
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "new-hash")).thenReturn(false);
+		when(publicBookingIdempotencyPort.find("booking-key-123")).thenReturn(Optional.of(
+				new PublicBookingIdempotencyRecord(
+						"old-hash", 10L, PublicBookingIdempotencyRecord.Status.COMPLETED
+				)
+		));
+
+		assertThatThrownBy(() -> service.create(command()))
+				.isInstanceOf(IdempotencyConflictException.class)
+				.hasMessageContaining("different request");
+		verify(appointmentRepositoryPort, never()).save(any());
+		verify(publicBarberShopRepositoryPort, never()).findVisibleServiceByCompanyId(any(), any());
+		verify(publicBarberShopRepositoryPort, never()).findVisibleBarberByTenant(any(), any(), any());
+	}
+
 	private void executeTenantActions() {
 		when(tenantContextExecutor.withTenant(any(TenantContext.class), any()))
 				.thenAnswer(invocation -> ((Supplier<?>) invocation.getArgument(1)).get());
@@ -233,14 +329,25 @@ class PublicBookingServiceTest {
 				.thenReturn(Optional.of(publicBarber()));
 	}
 
+	private void mockNewIdempotentRequest() {
+		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("same-hash");
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn(true);
+	}
+
 	private CreatePublicAppointmentCommand command() {
+		return command("booking-key-123", "127.0.0.1");
+	}
+
+	private CreatePublicAppointmentCommand command(String idempotencyKey, String remoteAddress) {
 		return new CreatePublicAppointmentCommand(
 				"ponte-perro",
 				"neiva-centro",
 				1L,
 				2L,
 				START_AT,
-				new PublicCustomerCommand("Carlos Villamil", "3001234567", "cliente@example.com")
+				new PublicCustomerCommand("Carlos Villamil", "3001234567", "cliente@example.com"),
+				idempotencyKey,
+				remoteAddress
 		);
 	}
 

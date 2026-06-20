@@ -196,7 +196,7 @@ Fuera de alcance de HU-20:
 Permitir que un cliente seleccione sucursal, servicio, barbero y slot
 disponible.
 
-Estado actual: implementada en rama de HU-21.
+Estado actual: integrada en `develop`.
 
 Alcance implementado:
 
@@ -215,7 +215,30 @@ Fuera de alcance:
 - Portal de cliente y ratings.
 - Catalogo de services por branch; requiere `branch_services`.
 
-### HU-22 Cash register foundation
+### HU-22 Public booking anti-abuse and idempotency
+
+Proteger la creacion publica de citas contra reintentos, doble click y abuso
+basico antes de exponer el flujo en produccion.
+
+Estado actual: implementada en rama de HU-22, pendiente de auditoria.
+
+Alcance implementado:
+
+- `Idempotency-Key` obligatorio, validado y tenant-aware.
+- Hash SHA-256 estable del request publico relevante.
+- Restriccion unica por company, branch y key para concurrencia.
+- Replay de la cita creada y conflicto al reutilizar la key con otro request.
+- Rate limit in-memory configurable por IP y por company+branch+phone.
+- Respuestas explicitas 400, 409 y 429.
+
+Pendiente antes de produccion de mayor escala:
+
+- Redis/API Gateway/WAF para rate limiting distribuido.
+- Trusted proxies antes de interpretar `X-Forwarded-For`.
+- Captcha o challenge adaptativo.
+- Politica de retencion de keys idempotentes.
+
+### HU-23 Cash register foundation
 
 Crear la base de caja por sucursal.
 
@@ -228,7 +251,7 @@ Alcance recomendado:
 - Movimientos de efectivo.
 - Restriccion de caja activa por branch/cashier.
 
-### HU-23 Payments and receipts
+### HU-24 Payments and receipts
 
 Registrar pagos y emitir recibos asociados a citas, walk-ins y ventas.
 
@@ -240,7 +263,7 @@ Alcance recomendado:
 - Relacion con cash register cuando el metodo sea efectivo.
 - Respuestas y errores estandarizados.
 
-### HU-24 Products and inventory
+### HU-25 Products and inventory
 
 Agregar productos, categorias e inventario.
 
@@ -254,7 +277,7 @@ Alcance recomendado:
 - Auditoria por user/company/branch.
 - Proteccion contra stock negativo.
 
-### HU-25 Reports and commissions
+### HU-26 Reports and commissions
 
 Agregar reportes y comisiones.
 
@@ -267,7 +290,7 @@ Alcance recomendado:
 - Cierres de caja.
 - Movimientos de inventario.
 
-### HU-26 Customer portal
+### HU-27 Customer portal
 
 Crear capacidades de autoservicio para clientes.
 
@@ -279,7 +302,7 @@ Alcance recomendado:
 - Recibos propios.
 - Preferencias de comunicacion.
 
-### HU-27 Ratings and reviews
+### HU-28 Ratings and reviews
 
 Agregar calificaciones y reseñas despues de citas completadas.
 
@@ -297,12 +320,13 @@ Alcance recomendado:
 3. HU-19 Authorization hardening and ownership rules.
 4. HU-20 Barber public profile.
 5. HU-21 Online booking barber selection.
-6. HU-22 Cash register foundation.
-7. HU-23 Payments and receipts.
-8. HU-24 Products and inventory.
-9. HU-25 Reports and commissions.
-10. HU-26 Customer portal.
-11. HU-27 Ratings and reviews.
+6. HU-22 Public booking anti-abuse and idempotency.
+7. HU-23 Cash register foundation.
+8. HU-24 Payments and receipts.
+9. HU-25 Products and inventory.
+10. HU-26 Reports and commissions.
+11. HU-27 Customer portal.
+12. HU-28 Ratings and reviews.
 
 El orden recomendado empieza por multi-tenant porque company/branch afectan
 todas las entidades y queries. Auth/RBAC debe venir despues para que el tenant

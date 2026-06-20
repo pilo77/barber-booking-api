@@ -109,6 +109,19 @@ Pendientes:
 - `startAt` debe ser futuro; `endAt` se calcula en backend.
 - Horarios laborales, solapes y estados bloqueantes se validan mediante la
   politica compartida de booking.
+- Toda reserva publica exige `Idempotency-Key`. La key queda scopeada por
+  company y branch y se asocia a un hash SHA-256 del request normalizado.
+- Repetir la misma key con el mismo request devuelve la cita original. Usar la
+  misma key con datos diferentes responde `409 Conflict`.
+- La fila idempotente y la cita se confirman en una misma transaccion; la
+  restriccion unica tenant-aware evita dos citas ante requests concurrentes.
+- Solo se persisten estados `IN_PROGRESS` y `COMPLETED`. No se persiste
+  `FAILED`: cualquier error de booking revierte la misma transaccion y elimina
+  el claim `IN_PROGRESS`, permitiendo reintentar la key sin dejarla bloqueada.
+- Solo las keys nuevas consumen rate limit. Los reintentos idempotentes
+  completados no consumen una cuota adicional.
+- El rate limit MVP es 10 intentos por IP/minuto y 3 por
+  company+branch+phone/10 minutos. Es in-memory y single-instance.
 - No se exponen credenciales, ids internos de tenant, roles ni datos de otros
   clientes.
 - HU-21 no incluye pagos, cancelacion publica ni reprogramacion publica.

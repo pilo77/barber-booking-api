@@ -8,6 +8,8 @@ public record CreatePublicAppointmentCommand(
 		Long serviceOfferingId,
 		Long barberId,
 		LocalDateTime startAt,
-		PublicCustomerCommand customer
+		PublicCustomerCommand customer,
+		String idempotencyKey,
+		String remoteAddress
 ) {
 }

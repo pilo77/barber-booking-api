@@ -26,4 +26,8 @@ public interface PublicBarberShopRepositoryPort {
 	Optional<PublicServiceOfferingResponse> findVisibleServiceByCompanyId(Long companyId, Long serviceOfferingId);
 
 	Optional<PublicBarberResponse> findVisibleBarberByTenant(Long companyId, Long branchId, Long barberId);
+
+	Optional<PublicServiceOfferingResponse> findServiceSnapshotByCompanyId(Long companyId, Long serviceOfferingId);
+
+	Optional<PublicBarberResponse> findBarberSnapshotByTenant(Long companyId, Long branchId, Long barberId);
 }

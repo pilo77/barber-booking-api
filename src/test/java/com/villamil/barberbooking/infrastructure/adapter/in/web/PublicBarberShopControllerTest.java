@@ -36,6 +36,8 @@ import com.villamil.barberbooking.application.port.in.GetPublicBranchUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicBarbersUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicBranchesUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicServicesUseCase;
+import com.villamil.barberbooking.application.exception.MissingIdempotencyKeyException;
+import com.villamil.barberbooking.application.exception.PublicBookingRateLimitExceededException;
 import com.villamil.barberbooking.domain.exception.PublicResourceNotFoundException;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
@@ -209,6 +211,7 @@ class PublicBarberShopControllerTest {
 
 		mockMvc.perform(post("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/appointments")
 					.contentType("application/json")
+					.header("Idempotency-Key", "booking-key-123")
 					.content("""
 							{
 							  "serviceOfferingId": 1,
@@ -230,10 +233,53 @@ class PublicBarberShopControllerTest {
 	}
 
 	@Test
+	void createPublicAppointmentWithoutIdempotencyKeyReturnsBadRequest() throws Exception {
+		String futureStartAt = LocalDateTime.now().plusDays(1).withNano(0).toString();
+		when(createPublicAppointmentUseCase.create(org.mockito.ArgumentMatchers.any()))
+				.thenThrow(new MissingIdempotencyKeyException("Idempotency-Key header is required"));
+
+		mockMvc.perform(post("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/appointments")
+					.contentType("application/json")
+					.content("""
+							{
+							  "serviceOfferingId": 1,
+							  "barberId": 2,
+							  "startAt": "%s",
+							  "customer": {"fullName": "Carlos", "phone": "3001234567"}
+							}
+							""".formatted(futureStartAt)))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.title").value("Invalid idempotency key"))
+				.andExpect(jsonPath("$.detail").value("Idempotency-Key header is required"));
+	}
+
+	@Test
+	void publicBookingRateLimitReturnsTooManyRequests() throws Exception {
+		String futureStartAt = LocalDateTime.now().plusDays(1).withNano(0).toString();
+		when(createPublicAppointmentUseCase.create(org.mockito.ArgumentMatchers.any()))
+				.thenThrow(new PublicBookingRateLimitExceededException("Too many public booking attempts"));
+
+		mockMvc.perform(post("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/appointments")
+					.contentType("application/json")
+					.header("Idempotency-Key", "booking-key-429")
+					.content("""
+							{
+							  "serviceOfferingId": 1,
+							  "barberId": 2,
+							  "startAt": "%s",
+							  "customer": {"fullName": "Carlos", "phone": "3001234567"}
+							}
+							""".formatted(futureStartAt)))
+				.andExpect(status().isTooManyRequests())
+				.andExpect(jsonPath("$.title").value("Too many requests"));
+	}
+
+	@Test
 	void publicAppointmentRejectsTenantAndCustomerIdsFromBody() throws Exception {
 		String futureStartAt = LocalDateTime.now().plusDays(1).withNano(0).toString();
 		mockMvc.perform(post("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/appointments")
 					.contentType("application/json")
+					.header("Idempotency-Key", "booking-key-123")
 					.content("""
 							{
 							  "companyId": 99,

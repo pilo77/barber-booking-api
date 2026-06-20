@@ -128,6 +128,7 @@ class SecurityConfigTest {
 
 		mockMvc.perform(post("/api/v1/public/barber-shops/ponte-perro/branches/neiva-centro/appointments")
 					.contentType("application/json")
+					.header("Idempotency-Key", "booking-key-123")
 					.header("X-Company-Id", "not-a-number")
 					.header("X-Branch-Id", "999")
 					.content("""

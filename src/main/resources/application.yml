@@ -25,6 +25,12 @@ server:
 
 booking:
   slot-step-minutes: ${BOOKING_SLOT_STEP_MINUTES:15}
+  public:
+    rate-limit:
+      ip-max-attempts: ${PUBLIC_BOOKING_RATE_LIMIT_IP_MAX_ATTEMPTS:10}
+      ip-window: ${PUBLIC_BOOKING_RATE_LIMIT_IP_WINDOW:1m}
+      phone-max-attempts: ${PUBLIC_BOOKING_RATE_LIMIT_PHONE_MAX_ATTEMPTS:3}
+      phone-window: ${PUBLIC_BOOKING_RATE_LIMIT_PHONE_WINDOW:10m}
 
 app:
   jwt:

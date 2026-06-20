@@ -40,14 +40,21 @@ public record CreatePublicAppointmentRequest(
 		LocalDateTime endAt
 ) {
 
-	public CreatePublicAppointmentCommand toCommand(String companySlug, String branchSlug) {
+	public CreatePublicAppointmentCommand toCommand(
+			String companySlug,
+			String branchSlug,
+			String idempotencyKey,
+			String remoteAddress
+	) {
 		return new CreatePublicAppointmentCommand(
 				companySlug,
 				branchSlug,
 				serviceOfferingId,
 				barberId,
 				startAt,
-				customer.toCommand()
+				customer.toCommand(),
+				idempotencyKey,
+				remoteAddress
 		);
 	}
 }

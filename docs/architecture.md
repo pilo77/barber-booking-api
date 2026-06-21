@@ -45,11 +45,53 @@ Aqui si pueden vivir Spring MVC, Spring Data JPA, PostgreSQL, Flyway y OpenAPI.
 
 ## Modelo inicial
 
+- `Company`: empresa/barberia tenant del sistema SaaS.
+- `Branch`: sede de una `Company`; agrupa operacion fisica como barberos,
+  horarios y citas.
 - `Customer`: cliente de la barberia.
 - `Barber`: barbero que atiende citas.
 - `ServiceOffering`: servicio ofrecido, con duracion, precio y activacion logica.
 - `BarberWorkingHour`: horario laboral recurrente por dia y barbero.
 - `Appointment`: reserva o atencion walk-in.
+
+## Multi-tenant foundation and Auth/RBAC
+
+La base SaaS usa `companyId` y `branchId` para aislar datos entre barberias.
+`Customer` y `ServiceOffering` quedan scopeados por `companyId`; `Barber`,
+`BarberWorkingHour` y `Appointment` quedan scopeados por `companyId` y
+`branchId`.
+
+Desde HU-18, los endpoints administrativos resuelven el tenant desde el usuario
+autenticado por JWT. El token contiene:
+
+- `userId`
+- `email`
+- `companyId`
+- `branchId`
+- `roles`
+
+La prioridad de resolucion es:
+
+1. JWT valido en `Authorization: Bearer <token>`.
+2. Headers temporales de desarrollo/testing si no hay usuario autenticado.
+3. Tenant default `1/1`.
+
+Los headers HTTP temporales son:
+
+- `X-Company-Id`
+- `X-Branch-Id`
+
+Si existe JWT valido, los headers no pueden sobrescribir `companyId` ni
+`branchId`. Los cuerpos de los requests no aceptan `companyId` ni `branchId`;
+el tenant se obtiene desde el contexto resuelto por infraestructura. En HU-19
+los endpoints publicos resuelven la barberia por `companySlug + branchSlug`, no
+por ids enviados por el cliente. `TenantContextExecutor` instala ese contexto
+solo durante el caso de uso publico y restaura el contexto anterior al salir.
+El filtro temporal ignora headers de tenant en rutas `/api/v1/public/**`.
+
+La seguridad vive en `infrastructure.config.SecurityConfig` y adapters de
+`infrastructure.security`. El dominio mantiene `UserAccount` y `Role` sin
+dependencias de Spring Security, JPA ni HTTP.
 
 ## Regla anti doble reserva
 
@@ -104,6 +146,14 @@ persistencia o clientes HTTP) sin afectar la logica de negocio.
   capa `application` por practicidad. Esto facilita la inyección en los
   casos de uso pero introduce una dependencia a Spring en la capa de
   aplicación.
+
+- `BarberAvailabilityCalculator`: componente compartido por disponibilidad
+  administrativa y publica. Calcula slots desde horarios y citas bloqueantes;
+  la autorizacion y la visibilidad publica se validan antes de invocarlo.
+
+- `PublicBookingService`: resuelve tenant y visibilidad por slugs, ejecuta los
+  repositorios tenant-aware dentro de un contexto acotado, reutiliza o crea el
+  customer por telefono y delega horarios/solape a `AppointmentBookingPolicy`.
 
 - `GlobalExceptionHandler`: manejador en la capa web que estandariza las
   respuestas de error (timestamp, status, error, message, path, code) y mapea

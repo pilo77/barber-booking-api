@@ -25,6 +25,9 @@ Foundation inicial del proyecto:
 - Agenda diaria operativa del barbero con resumen por estado y ocupacion.
 - Ciclo de vida de citas con transiciones controladas de estado.
 - Citas presenciales walk-in con inicio inmediato opcional.
+- Foundation Auth/RBAC con bootstrap, login JWT, roles y tenant desde token.
+- Authorization hardening con `barberId` en JWT y ownership para agenda,
+  dashboard, disponibilidad y citas propias de `BARBER`.
 
 ## Requisitos
 
@@ -46,6 +49,9 @@ Copy-Item .env.example .env
 
    `BOOKING_SLOT_STEP_MINUTES` controla cada cuantos minutos se evalua un
    inicio posible de cita. El valor por defecto es `15`.
+   `APP_JWT_SECRET`, `APP_JWT_EXPIRATION_MINUTES` y `APP_BOOTSTRAP_TOKEN`
+   configuran autenticacion local. En produccion deben venir de variables de
+   entorno seguras.
 
 3. Levanta PostgreSQL:
 
@@ -75,6 +81,16 @@ Health check:
 GET http://localhost:8080/actuator/health
 ```
 
+Bootstrap del primer usuario:
+
+```text
+POST http://localhost:8080/api/v1/auth/bootstrap
+X-Bootstrap-Token: <APP_BOOTSTRAP_TOKEN>
+```
+
+Despues usa `POST /api/v1/auth/login` y envia el JWT como
+`Authorization: Bearer <token>` para endpoints administrativos.
+
 ## Arquitectura
 
 El proyecto sigue arquitectura hexagonal:
@@ -98,6 +114,9 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 - HU-08: Agenda diaria operativa del barbero.
 - HU-09: Ciclo de vida de la cita.
 - HU-10: Citas presenciales walk-in.
+- HU-17: Multi-tenant foundation.
+- HU-18: Auth and RBAC foundation.
+- HU-19: Authorization hardening and ownership rules.
 
 ## Documentación
 

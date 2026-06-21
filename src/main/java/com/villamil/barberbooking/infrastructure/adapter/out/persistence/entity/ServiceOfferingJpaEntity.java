@@ -20,7 +20,10 @@ public class ServiceOfferingJpaEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(name = "name", nullable = false, length = 120, unique = true)
+	@Column(name = "company_id", nullable = false)
+	private Long companyId;
+
+	@Column(name = "name", nullable = false, length = 120)
 	private String name;
 
 	@Column(name = "description", length = 255)
@@ -35,6 +38,12 @@ public class ServiceOfferingJpaEntity {
 	@Column(name = "active", nullable = false)
 	private boolean active;
 
+	@Column(name = "visible_for_online_booking", nullable = false)
+	private boolean visibleForOnlineBooking;
+
+	@Column(name = "sort_order", nullable = false)
+	private int sortOrder;
+
 	@Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
 	private Instant createdAt;
 
@@ -46,6 +55,7 @@ public class ServiceOfferingJpaEntity {
 
 	public ServiceOfferingJpaEntity(
 			Long id,
+			Long companyId,
 			String name,
 			String description,
 			int durationMinutes,
@@ -54,12 +64,43 @@ public class ServiceOfferingJpaEntity {
 			Instant createdAt,
 			Instant updatedAt
 	) {
+		this(
+				id,
+				companyId,
+				name,
+				description,
+				durationMinutes,
+				price,
+				active,
+				true,
+				0,
+				createdAt,
+				updatedAt
+		);
+	}
+
+	public ServiceOfferingJpaEntity(
+			Long id,
+			Long companyId,
+			String name,
+			String description,
+			int durationMinutes,
+			BigDecimal price,
+			boolean active,
+			boolean visibleForOnlineBooking,
+			int sortOrder,
+			Instant createdAt,
+			Instant updatedAt
+	) {
 		this.id = id;
+		this.companyId = companyId;
 		this.name = name;
 		this.description = description;
 		this.durationMinutes = durationMinutes;
 		this.price = price;
 		this.active = active;
+		this.visibleForOnlineBooking = visibleForOnlineBooking;
+		this.sortOrder = sortOrder;
 		this.createdAt = createdAt;
 		this.updatedAt = updatedAt;
 	}
@@ -84,6 +125,10 @@ public class ServiceOfferingJpaEntity {
 		return id;
 	}
 
+	public Long getCompanyId() {
+		return companyId;
+	}
+
 	public String getName() {
 		return name;
 	}
@@ -102,6 +147,14 @@ public class ServiceOfferingJpaEntity {
 
 	public boolean isActive() {
 		return active;
+	}
+
+	public boolean isVisibleForOnlineBooking() {
+		return visibleForOnlineBooking;
+	}
+
+	public int getSortOrder() {
+		return sortOrder;
 	}
 
 	public Instant getCreatedAt() {

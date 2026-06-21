@@ -13,6 +13,355 @@ La aplicacion expone la especificacion OpenAPI y la UI de Swagger en:
 Estos endpoints estan habilitados desde la configuracion en la capa
 `infrastructure`.
 
+## Temporary Tenant Headers
+
+Desde HU-18, los endpoints administrativos usan JWT Bearer. El tenant real se
+resuelve primero desde el usuario autenticado:
+
+- `companyId`
+- `branchId`
+- `barberId` cuando el usuario interno esta vinculado a un barbero
+- `roles`
+
+Los headers temporales siguen disponibles solo como fallback de desarrollo o
+testing cuando no hay usuario autenticado:
+
+```http
+X-Company-Id: 1
+X-Branch-Id: 1
+```
+
+Reglas:
+
+- Si hay JWT valido, los headers no pueden sobrescribir `companyId` ni
+  `branchId`.
+- Si no hay JWT y no se envian headers, la API usa la company y branch default
+  (`1/1`).
+- `companyId` y `branchId` no se envian en el body de requests.
+- `X-Company-Id` scopea `customers` y `services`.
+- `X-Company-Id` + `X-Branch-Id` scopean `barbers`, `working-hours`,
+  `appointments`, `availability` y `daily-dashboard`.
+- Esta estrategia de headers es temporal. Los endpoints publicos resuelven la
+  barberia por `slug`, no por ids de tenant enviados por el cliente.
+
+## Auth and RBAC
+
+Endpoints publicos:
+
+```http
+POST /api/v1/auth/bootstrap
+POST /api/v1/auth/login
+GET  /api/v1/public/**
+GET  /actuator/health
+GET  /swagger-ui/**
+GET  /v3/api-docs/**
+```
+
+`POST /api/v1/auth/bootstrap` solo crea el primer usuario si no existe ningun
+registro en `user_accounts`. Requiere header:
+
+```http
+X-Bootstrap-Token: <APP_BOOTSTRAP_TOKEN>
+```
+
+Request:
+
+```json
+{
+  "email": "owner@example.com",
+  "password": "StrongPassword123!",
+  "fullName": "Owner User"
+}
+```
+
+El usuario inicial queda como `COMPANY_OWNER` del tenant default `1/1`. El
+password se guarda con BCrypt y nunca se devuelve.
+
+`POST /api/v1/auth/login`:
+
+```json
+{
+  "email": "owner@example.com",
+  "password": "StrongPassword123!"
+}
+```
+
+Response:
+
+```json
+{
+  "accessToken": "...",
+  "tokenType": "Bearer",
+  "expiresIn": 3600,
+  "user": {
+    "id": 1,
+    "email": "owner@example.com",
+    "fullName": "Owner User",
+    "companyId": 1,
+    "branchId": 1,
+    "barberId": null,
+    "roles": ["COMPANY_OWNER"]
+  }
+}
+```
+
+Los endpoints protegidos deben enviar:
+
+```http
+Authorization: Bearer <accessToken>
+```
+
+`GET /api/v1/auth/me` devuelve el usuario autenticado.
+
+## Public Barber Shop Profile
+
+HU-20 expone consultas publicas sin JWT para mostrar una barberia, sus sedes,
+servicios visibles y barberos visibles. HU-21 usa esos recursos para consultar
+disponibilidad y crear citas publicas.
+
+Endpoints:
+
+```http
+GET /api/v1/public/barber-shops/{companySlug}
+GET /api/v1/public/barber-shops/{companySlug}/branches
+GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}
+GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/services
+GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/barbers
+```
+
+Decision de slugs:
+
+- `company.slug` es unico globalmente.
+- `branch.slug` es unico dentro de cada company.
+- Por eso los endpoints de branch usan `companySlug + branchSlug` para evitar
+  colisiones entre barberias distintas.
+- Estos endpoints no usan `X-Company-Id` ni `X-Branch-Id`.
+
+`GET /api/v1/public/barber-shops/{companySlug}`:
+
+```json
+{
+  "slug": "ponte-perro",
+  "name": "Ponte Perro Barberia",
+  "description": "Barberia especializada en cortes modernos.",
+  "logoUrl": "https://cdn.example.com/logo.png",
+  "active": true
+}
+```
+
+`GET /api/v1/public/barber-shops/{companySlug}/branches`:
+
+```json
+[
+  {
+    "slug": "neiva-centro",
+    "name": "Neiva Centro",
+    "address": "Calle 1 #2-3",
+    "phone": "3001234567"
+  }
+]
+```
+
+`GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/services`:
+
+```json
+[
+  {
+    "id": 1,
+    "name": "Corte clasico",
+    "description": "Corte tradicional.",
+    "durationMinutes": 30,
+    "price": 25000.00
+  }
+]
+```
+
+`GET /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/barbers`:
+
+```json
+[
+  {
+    "id": 1,
+    "displayName": "Santiago",
+    "photoUrl": "https://cdn.example.com/santiago.png",
+    "bio": "Especialista en fade y barba.",
+    "specialties": "Fade, barba, cejas"
+  }
+]
+```
+
+Reglas de exposicion:
+
+- Solo se devuelven companies activas.
+- Solo se devuelven branches activas.
+- Solo se devuelven services activos y `visibleForOnlineBooking=true`.
+- El endpoint de servicios públicos de branch valida que la branch pertenece a la
+  company pública, pero devuelve el catálogo visible de servicios de esa company.
+  No existe un catálogo de servicios específico por branch en HU-20.
+- Solo se devuelven barbers activos y `activeForOnlineBooking=true`.
+- Se pueden exponer `id` de service/barber porque HU-21 los usara para
+  disponibilidad y reserva.
+- No se exponen emails internos, telefonos de barberos, usuarios, roles,
+  password hashes, `companyId` ni `branchId`.
+- Si el recurso no existe o esta inactivo, se responde `404`.
+
+## Public Availability and Booking
+
+HU-21 permite consultar slots y reservar sin login. HU-22 agrega idempotencia
+y rate limiting basico al POST publico. El tenant se resuelve
+exclusivamente desde `companySlug + branchSlug`; los headers `X-Company-Id` y
+`X-Branch-Id` se ignoran para rutas publicas.
+
+```http
+GET  /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/barbers/{barberId}/availability?date=2026-06-20&serviceOfferingId=1
+POST /api/v1/public/barber-shops/{companySlug}/branches/{branchSlug}/appointments
+Idempotency-Key: booking-7f6a6e7d-2df8-4f55-ae67
+```
+
+La disponibilidad devuelve el mismo formato de slots documentado en
+`Availability`, pero solo si company, branch, service y barber son publicamente
+reservables dentro del tenant resuelto.
+
+Request de reserva publica:
+
+```json
+{
+  "serviceOfferingId": 1,
+  "barberId": 2,
+  "startAt": "2026-06-20T10:00:00",
+  "customer": {
+    "fullName": "Carlos Villamil",
+    "phone": "3001234567",
+    "email": "cliente@example.com"
+  }
+}
+```
+
+`companyId`, `branchId`, `customerId` y `endAt` no se aceptan en el request
+publico. `startAt` debe ser futuro y `endAt` se calcula con la duracion del
+servicio.
+
+`Idempotency-Key` es obligatorio para el POST. Debe tener entre 8 y 128
+caracteres y solo puede contener letras, numeros, `.`, `_`, `:` y `-`. La key
+se aisla por `companyId + branchId`; la misma key y el mismo request devuelve
+la cita ya creada sin duplicarla, mientras que reutilizarla con otro request
+responde `409 Conflict`.
+
+Response `201 Created`:
+
+```json
+{
+  "id": 10,
+  "status": "SCHEDULED",
+  "source": "ONLINE",
+  "startAt": "2026-06-20T10:00:00",
+  "endAt": "2026-06-20T10:30:00",
+  "service": {
+    "id": 1,
+    "name": "Corte clasico",
+    "durationMinutes": 30,
+    "price": 25000.00
+  },
+  "barber": {
+    "id": 2,
+    "displayName": "Santiago",
+    "photoUrl": null
+  },
+  "customer": {
+    "fullName": "Carlos Villamil",
+    "phone": "3001234567"
+  }
+}
+```
+
+Reglas:
+
+- Company y branch deben existir, estar activas y corresponder a los slugs.
+- Service debe pertenecer a la company, estar activo y visible online.
+- Barber debe pertenecer a esa company/branch, estar activo y visible online.
+- Customer se busca por `company + phone`; se reutiliza si esta activo o se
+  crea dentro de la company. El cliente publico nunca envia `customerId` y la
+  respuesta refleja los datos basicos enviados, sin revelar datos almacenados
+  de un customer preexistente.
+- Se reutilizan horarios laborales, estados bloqueantes y regla de solape de
+  `AppointmentBookingPolicy`.
+- Recurso no publicable: `404`. Horario invalido, solape o recurso interno
+  inactivo: `409` segun el manejador existente.
+- Header idempotente ausente o invalido: `400 Bad Request`.
+- Misma key con payload diferente: `409 Conflict`.
+- Limite antiabuso excedido: `429 Too Many Requests`.
+- El rate limit MVP permite 10 intentos por IP por minuto y 3 intentos por
+  `company + branch + phone` cada 10 minutos. Los valores son configurables.
+- Para este MVP la IP es `request.getRemoteAddr()`. No se confia en
+  `X-Forwarded-For` hasta configurar proxies confiables.
+- No hay pagos, cancelacion publica ni reprogramacion publica en HU-21.
+- Los servicios siguen siendo company-wide. El catalogo por sede requiere una
+  relacion futura `branch_services`.
+- Dos solicitudes concurrentes para crear el mismo `company + phone` pueden
+  competir por la restriccion unica; una puede finalizar en `409 Conflict`.
+
+## User Accounts
+
+Endpoints protegidos:
+
+```http
+POST  /api/v1/user-accounts
+GET   /api/v1/user-accounts
+GET   /api/v1/user-accounts/{id}
+PATCH /api/v1/user-accounts/{id}/activate
+PATCH /api/v1/user-accounts/{id}/deactivate
+```
+
+Request `POST /api/v1/user-accounts`:
+
+```json
+{
+  "email": "reception@example.com",
+  "password": "StrongPassword123!",
+  "fullName": "Reception User",
+  "phone": "3001234567",
+  "branchId": 1,
+  "roles": ["RECEPTIONIST"]
+}
+```
+
+Para crear un usuario con rol `BARBER`, el body debe incluir `barberId`:
+
+```json
+{
+  "email": "barber@example.com",
+  "password": "StrongPassword123!",
+  "fullName": "Barber User",
+  "phone": "3001234568",
+  "branchId": 1,
+  "barberId": 5,
+  "roles": ["BARBER"]
+}
+```
+
+El body no acepta `companyId`; se deriva del JWT del usuario autenticado.
+`branchId` es opcional y, si se envia, debe pertenecer a la company del usuario
+actual. `BRANCH_MANAGER` solo puede crear usuarios dentro de su branch.
+`barberId`, cuando se envia, debe pertenecer a la misma company/branch y solo
+puede usarse para usuarios con rol `BARBER`. `COMPANY_OWNER` puede crear roles
+operativos internos, pero no `PLATFORM_OWNER`, `COMPANY_OWNER` ni `CUSTOMER`
+desde este endpoint.
+
+Responses de usuario y `GET /api/v1/auth/me` incluyen `barberId` y nunca
+incluyen `passwordHash`.
+
+Reglas de ownership principales:
+
+- `BARBER` solo puede consultar su agenda, dashboard, availability y operar
+  citas asociadas a su propio `barberId`.
+- `BARBER` no puede listar customers ni gestionar barbers, services o user
+  accounts.
+- `RECEPTIONIST` puede operar clientes y citas dentro del tenant actual, pero
+  no gestionar user accounts.
+- `BRANCH_MANAGER` queda limitado por tenant/branch y no puede asignar roles
+  de owner.
+- `CUSTOMER` no puede usar endpoints administrativos.
+
 ## Customers
 
 ```http

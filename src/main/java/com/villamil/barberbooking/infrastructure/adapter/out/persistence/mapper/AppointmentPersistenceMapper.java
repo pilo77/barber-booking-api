@@ -2,15 +2,18 @@ package com.villamil.barberbooking.infrastructure.adapter.out.persistence.mapper
 
 import org.springframework.stereotype.Component;
 
+import com.villamil.barberbooking.application.tenant.TenantContext;
 import com.villamil.barberbooking.domain.model.Appointment;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.AppointmentJpaEntity;
 
 @Component
 public class AppointmentPersistenceMapper {
 
-	public AppointmentJpaEntity toEntity(Appointment appointment) {
+	public AppointmentJpaEntity toEntity(Appointment appointment, TenantContext tenantContext) {
 		return new AppointmentJpaEntity(
 				appointment.id(),
+				tenantContext.companyId(),
+				tenantContext.branchId(),
 				appointment.customerId(),
 				appointment.barberId(),
 				appointment.serviceOfferingId(),

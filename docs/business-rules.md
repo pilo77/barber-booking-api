@@ -9,6 +9,125 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
 - Las operaciones y validaciones deben comprobar `active=true` para considerar
   recursos como disponibles.
 
+## Multi-tenant and Auth/RBAC
+
+- `Company` representa la barberia/empresa propietaria de los datos.
+- `Branch` representa una sede de una company.
+- `Customer` y `ServiceOffering` pertenecen a una company.
+- `Barber`, `BarberWorkingHour` y `Appointment` pertenecen a una company y una
+  branch.
+- Ningun request body debe enviar `companyId` ni `branchId`.
+- Desde HU-18, en endpoints administrativos el tenant se resuelve primero desde
+  JWT. Los headers temporales `X-Company-Id` y `X-Branch-Id` solo aplican si no
+  hay usuario autenticado.
+- Si existe JWT valido, los headers no pueden sobrescribir el tenant del
+  usuario.
+- HU-19 agrega hardening de autorizacion por ownership para agenda,
+  dashboard, availability, lifecycle de citas y user accounts.
+- Los casos de uso deben consultar recursos dentro del tenant actual. Si un
+  cliente, barbero, servicio u appointment existe en otra company/branch, debe
+  tratarse como no encontrado para el tenant actual.
+- Los usuarios con rol `BARBER` deben estar vinculados a un `barberId`. Sin
+  ese vinculo no pueden operar agenda propia.
+- La disponibilidad y el dashboard diario no deben mezclar citas de otra
+  company o branch.
+- Los nombres de servicios solo son unicos dentro de la misma company.
+
+## Roles
+
+- `PLATFORM_OWNER`: rol global de plataforma. Queda reservado para administracion
+  SaaS y debe auditarse antes de uso operativo amplio.
+- `COMPANY_OWNER`: administra usuarios y operacion de su tenant.
+- `BRANCH_MANAGER`: consulta usuarios de su branch y opera la sucursal.
+- `RECEPTIONIST`: gestiona clientes, citas, walk-ins y disponibilidad dentro
+  del tenant actual. No gestiona usuarios ni roles.
+- `BARBER`: consulta su agenda, dashboard y disponibilidad propia; puede
+  iniciar, completar, cancelar o marcar no-show solo en sus propias citas.
+- `CASHIER`, `ACCOUNTANT`, `INVENTORY_MANAGER`: reservados para caja, reportes e
+  inventario futuros; no reciben acceso administrativo amplio todavia.
+- `CUSTOMER`: reservado para portal publico/futuro; no puede usar endpoints
+  administrativos actuales.
+
+### Authorization hardening
+
+- Existe relacion formal `user_accounts.barber_id -> barbers`.
+- Un `barberId` solo puede vincularse a un usuario y debe pertenecer a la misma
+  company/branch.
+- `BARBER` no puede ver agenda ni dashboard de otro barbero.
+- `BARBER` no puede operar citas de otro barbero.
+- `BARBER` no puede gestionar customers, barbers, services ni user accounts.
+- `CUSTOMER` no puede usar endpoints administrativos actuales.
+- Roles `CASHIER`, `ACCOUNTANT` e `INVENTORY_MANAGER` quedan reservados para
+  modulos futuros y no deben recibir acceso operativo amplio todavia.
+
+Pendientes:
+
+- Agregar issuer, audience y `jti` al JWT antes de produccion.
+- Registrar auditoria persistente de acciones sensibles.
+- Gestion multi-branch completa para `COMPANY_OWNER` requiere endpoints de
+  administracion de branches.
+
+## Perfil publico de barberia
+
+- HU-20 expone consultas publicas por slug y HU-21 agrega disponibilidad y
+  reserva publica sin login.
+- Los endpoints publicos resuelven el tenant por `companySlug` y, para sedes,
+  por `companySlug + branchSlug`.
+- `branch.slug` se trata como unico dentro de una company, no globalmente.
+- Los endpoints publicos no dependen de `X-Company-Id`, `X-Branch-Id` ni JWT.
+- Solo una company activa puede tener perfil publico visible.
+- Solo branches activas se listan o consultan publicamente.
+- Solo services activos con `visible_for_online_booking=true` se listan
+  publicamente.
+- El endpoint de servicios públicos de branch valida que la branch pertenece a la
+  company pública, pero devuelve el catálogo visible de servicios de esa company.
+  No existe un catálogo de servicios específico por branch en HU-20.
+- Solo barbers activos con `active_for_online_booking=true` se listan
+  publicamente.
+- La respuesta publica puede exponer `service.id` y `barber.id` para preparar
+  HU-21 de disponibilidad/reserva, pero no expone `companyId`, `branchId`,
+  emails internos, telefonos de barberos, usuarios, roles ni credenciales.
+- Los servicios siguen siendo de company. Mientras no exista una relacion
+  service-branch, el listado publico de servicios de una branch devuelve los
+  servicios visibles de la company a la que pertenece esa branch.
+
+### Reserva publica
+
+- La reserva publica resuelve `companyId` y `branchId` solo desde
+  `companySlug + branchSlug`; ignora headers temporales y no acepta ids de
+  tenant en el body.
+- Company y branch deben estar activas. La branch debe pertenecer a la company.
+- Service debe pertenecer a la company, estar activo y ser visible online.
+- Barber debe pertenecer a la company y branch resueltas, estar activo y ser
+  visible online.
+- El customer se busca por telefono dentro de la company. Si existe y esta
+  activo se reutiliza; si no existe se crea. No se acepta `customerId` publico.
+- La respuesta usa nombre y telefono normalizados del request; nunca devuelve
+  datos almacenados del customer para indicar directa o indirectamente si ya
+  existia.
+- Toda cita publica se crea con `source = ONLINE` y `status = SCHEDULED`.
+- `startAt` debe ser futuro; `endAt` se calcula en backend.
+- Horarios laborales, solapes y estados bloqueantes se validan mediante la
+  politica compartida de booking.
+- Toda reserva publica exige `Idempotency-Key`. La key queda scopeada por
+  company y branch y se asocia a un hash SHA-256 del request normalizado.
+- Repetir la misma key con el mismo request devuelve la cita original. Usar la
+  misma key con datos diferentes responde `409 Conflict`.
+- La fila idempotente y la cita se confirman en una misma transaccion; la
+  restriccion unica tenant-aware evita dos citas ante requests concurrentes.
+- Solo se persisten estados `IN_PROGRESS` y `COMPLETED`. No se persiste
+  `FAILED`: cualquier error de booking revierte la misma transaccion y elimina
+  el claim `IN_PROGRESS`, permitiendo reintentar la key sin dejarla bloqueada.
+- Solo las keys nuevas consumen rate limit. Los reintentos idempotentes
+  completados no consumen una cuota adicional.
+- El rate limit MVP es 10 intentos por IP/minuto y 3 por
+  company+branch+phone/10 minutos. Es in-memory y single-instance.
+- No se exponen credenciales, ids internos de tenant, roles ni datos de otros
+  clientes.
+- HU-21 no incluye pagos, cancelacion publica ni reprogramacion publica.
+- La creacion concurrente del mismo `company + phone` puede producir un
+  `409 Conflict` por la restriccion unica y queda como deuda tecnica conocida.
+
 ## Reglas de disponibilidad
 
 - Un `Barber` solo puede recibir citas si `barber.active == true`.
@@ -19,8 +138,7 @@ Este documento centraliza las reglas de negocio aplicadas por la API.
 
 - `endAt` siempre se calcula en backend usando `startAt` + `durationMinutes`
   del `ServiceOffering` asociado.
-- El frontend NO debe enviar `endAt`; si viene, el servidor lo ignora y lo
-  recalcula.
+- El frontend NO debe enviar `endAt`; los contratos de reserva no lo aceptan.
 
 ## Regla de solape (overlap)
 
@@ -73,4 +191,4 @@ error explicito.
 
 - Validar siempre `active` de recursos antes de crear o iniciar una cita.
 - Centralizar validaciones en `AppointmentBookingPolicy` para evitar
-  duplicacion entre endpoints `appointments` y `walk-ins`.
+  duplicacion entre booking administrativo, publico y walk-ins.

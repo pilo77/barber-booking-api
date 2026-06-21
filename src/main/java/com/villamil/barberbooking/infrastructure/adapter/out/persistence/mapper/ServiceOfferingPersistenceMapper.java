@@ -2,15 +2,17 @@ package com.villamil.barberbooking.infrastructure.adapter.out.persistence.mapper
 
 import org.springframework.stereotype.Component;
 
+import com.villamil.barberbooking.application.tenant.TenantContext;
 import com.villamil.barberbooking.domain.model.ServiceOffering;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.ServiceOfferingJpaEntity;
 
 @Component
 public class ServiceOfferingPersistenceMapper {
 
-	public ServiceOfferingJpaEntity toEntity(ServiceOffering serviceOffering) {
+	public ServiceOfferingJpaEntity toEntity(ServiceOffering serviceOffering, TenantContext tenantContext) {
 		return new ServiceOfferingJpaEntity(
 				serviceOffering.id(),
+				tenantContext.companyId(),
 				serviceOffering.name(),
 				serviceOffering.description(),
 				serviceOffering.durationMinutes(),

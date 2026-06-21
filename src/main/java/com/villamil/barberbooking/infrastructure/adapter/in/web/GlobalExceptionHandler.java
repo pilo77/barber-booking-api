@@ -19,6 +19,7 @@ import com.villamil.barberbooking.domain.exception.AppointmentInvalidStatusTrans
 import com.villamil.barberbooking.domain.exception.AppointmentNotAvailableException;
 import com.villamil.barberbooking.domain.exception.AppointmentNotFoundException;
 import com.villamil.barberbooking.domain.exception.AppointmentOutsideWorkingHoursException;
+import com.villamil.barberbooking.domain.exception.AuthenticationFailedException;
 import com.villamil.barberbooking.domain.exception.BarberAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
 import com.villamil.barberbooking.domain.exception.BarberWorkingHourNotFoundException;
@@ -26,18 +27,54 @@ import com.villamil.barberbooking.domain.exception.BarberWorkingHourOverlapExcep
 import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.exception.CustomerAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
+import com.villamil.barberbooking.domain.exception.ForbiddenOperationException;
+import com.villamil.barberbooking.domain.exception.PublicResourceNotFoundException;
 import com.villamil.barberbooking.domain.exception.ResourceInactiveException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.ServiceOfferingNotFoundException;
+import com.villamil.barberbooking.domain.exception.UserAccountAlreadyExistsException;
+import com.villamil.barberbooking.domain.exception.UserAccountNotFoundException;
+import com.villamil.barberbooking.application.exception.IdempotencyConflictException;
+import com.villamil.barberbooking.application.exception.InvalidIdempotencyKeyException;
+import com.villamil.barberbooking.application.exception.MissingIdempotencyKeyException;
+import com.villamil.barberbooking.application.exception.PublicBookingRateLimitExceededException;
 
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+	@ExceptionHandler({MissingIdempotencyKeyException.class, InvalidIdempotencyKeyException.class})
+	public ResponseEntity<ProblemDetail> handleInvalidIdempotencyKey(RuntimeException exception, HttpServletRequest request) {
+		return problem(HttpStatus.BAD_REQUEST, "Invalid idempotency key", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(IdempotencyConflictException.class)
+	public ResponseEntity<ProblemDetail> handleIdempotencyConflict(IdempotencyConflictException exception, HttpServletRequest request) {
+		return problem(HttpStatus.CONFLICT, "Idempotency conflict", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(PublicBookingRateLimitExceededException.class)
+	public ResponseEntity<ProblemDetail> handlePublicBookingRateLimit(
+			PublicBookingRateLimitExceededException exception,
+			HttpServletRequest request
+	) {
+		return problem(HttpStatus.TOO_MANY_REQUESTS, "Too many requests", exception.getMessage(), request, exception);
+	}
+
 	@ExceptionHandler(AppointmentNotFoundException.class)
 	public ResponseEntity<ProblemDetail> handleAppointmentNotFound(AppointmentNotFoundException exception, HttpServletRequest request) {
 		return problem(HttpStatus.NOT_FOUND, "Appointment not found", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(AuthenticationFailedException.class)
+	public ResponseEntity<ProblemDetail> handleAuthenticationFailed(AuthenticationFailedException exception, HttpServletRequest request) {
+		return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(ForbiddenOperationException.class)
+	public ResponseEntity<ProblemDetail> handleForbidden(ForbiddenOperationException exception, HttpServletRequest request) {
+		return problem(HttpStatus.FORBIDDEN, "Forbidden", exception.getMessage(), request, exception);
 	}
 
 	@ExceptionHandler(AppointmentNotAvailableException.class)
@@ -110,9 +147,24 @@ public class GlobalExceptionHandler {
 		return problem(HttpStatus.CONFLICT, "Service offering already exists", exception.getMessage(), request, exception);
 	}
 
+	@ExceptionHandler(UserAccountNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handleUserAccountNotFound(UserAccountNotFoundException exception, HttpServletRequest request) {
+		return problem(HttpStatus.NOT_FOUND, "User account not found", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(UserAccountAlreadyExistsException.class)
+	public ResponseEntity<ProblemDetail> handleUserAccountAlreadyExists(UserAccountAlreadyExistsException exception, HttpServletRequest request) {
+		return problem(HttpStatus.CONFLICT, "User account already exists", exception.getMessage(), request, exception);
+	}
+
 	@ExceptionHandler(ResourceInactiveException.class)
 	public ResponseEntity<ProblemDetail> handleResourceInactive(ResourceInactiveException exception, HttpServletRequest request) {
 		return problem(HttpStatus.CONFLICT, "Resource inactive", exception.getMessage(), request, exception);
+	}
+
+	@ExceptionHandler(PublicResourceNotFoundException.class)
+	public ResponseEntity<ProblemDetail> handlePublicResourceNotFound(PublicResourceNotFoundException exception, HttpServletRequest request) {
+		return problem(HttpStatus.NOT_FOUND, "Public resource not found", exception.getMessage(), request, exception);
 	}
 
 	@ExceptionHandler(BusinessRuleException.class)

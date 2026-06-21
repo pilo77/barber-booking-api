@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,15 +23,19 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import com.villamil.barberbooking.application.dto.command.GetBarberDailyDashboardCommand;
 import com.villamil.barberbooking.application.dto.response.BarberDailyDashboardResponse;
+import com.villamil.barberbooking.application.dto.response.AuthenticatedUserResponse;
 import com.villamil.barberbooking.application.port.out.AppointmentRepositoryPort;
 import com.villamil.barberbooking.application.port.out.BarberRepositoryPort;
+import com.villamil.barberbooking.application.port.out.CurrentUserProvider;
 import com.villamil.barberbooking.application.port.out.CustomerRepositoryPort;
 import com.villamil.barberbooking.application.port.out.ServiceOfferingRepositoryPort;
 import com.villamil.barberbooking.domain.exception.BarberNotFoundException;
 import com.villamil.barberbooking.domain.exception.CustomerNotFoundException;
+import com.villamil.barberbooking.domain.exception.ForbiddenOperationException;
 import com.villamil.barberbooking.domain.model.Appointment;
 import com.villamil.barberbooking.domain.model.Barber;
 import com.villamil.barberbooking.domain.model.Customer;
+import com.villamil.barberbooking.domain.model.Role;
 import com.villamil.barberbooking.domain.model.ServiceOffering;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
@@ -57,6 +62,9 @@ class BarberDailyDashboardServiceTest {
 
 	@Mock
 	private ServiceOfferingRepositoryPort serviceOfferingRepositoryPort;
+
+	@Mock
+	private CurrentUserProvider currentUserProvider;
 
 	@Test
 	void getDailyDashboardWithSummaryAndNextAppointment() {
@@ -140,6 +148,27 @@ class BarberDailyDashboardServiceTest {
 				.hasMessage("Customer not found");
 	}
 
+	@Test
+	void barberCanConsultOwnDashboard() {
+		GetBarberDailyDashboardService service = securedService(barberUser(2L));
+		when(barberRepositoryPort.findById(2L)).thenReturn(Optional.of(barber()));
+		when(appointmentRepositoryPort.findByBarberIdAndDate(2L, DATE)).thenReturn(List.of());
+
+		BarberDailyDashboardResponse response = service.getDailyDashboard(command());
+
+		assertThat(response.barberId()).isEqualTo(2L);
+	}
+
+	@Test
+	void barberCannotConsultAnotherBarberDashboard() {
+		GetBarberDailyDashboardService service = securedService(barberUser(9L));
+
+		assertThatThrownBy(() -> service.getDailyDashboard(command()))
+				.isInstanceOf(ForbiddenOperationException.class)
+				.hasMessage("User cannot access this barber schedule");
+		verify(barberRepositoryPort, never()).findById(2L);
+	}
+
 	private GetBarberDailyDashboardService service() {
 		return new GetBarberDailyDashboardService(
 				barberRepositoryPort,
@@ -147,6 +176,31 @@ class BarberDailyDashboardServiceTest {
 				customerRepositoryPort,
 				serviceOfferingRepositoryPort,
 				CLOCK
+		);
+	}
+
+	private GetBarberDailyDashboardService securedService(AuthenticatedUserResponse actor) {
+		when(currentUserProvider.currentUser()).thenReturn(Optional.of(actor));
+		return new GetBarberDailyDashboardService(
+				barberRepositoryPort,
+				appointmentRepositoryPort,
+				customerRepositoryPort,
+				serviceOfferingRepositoryPort,
+				new CurrentUserResolver(currentUserProvider),
+				new UserAuthorizationPolicy(),
+				CLOCK
+		);
+	}
+
+	private AuthenticatedUserResponse barberUser(Long barberId) {
+		return new AuthenticatedUserResponse(
+				10L,
+				"barber@example.com",
+				"Barber User",
+				1L,
+				1L,
+				barberId,
+				Set.of(Role.BARBER)
 		);
 	}
 

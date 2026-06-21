@@ -100,6 +100,18 @@ class AppointmentServiceTest {
 	}
 
 	@Test
+	void failWhenCustomerExistsOutsideCurrentTenant() {
+		BookAppointmentService service = service();
+
+		when(customerRepositoryPort.findById(1L)).thenReturn(Optional.empty());
+
+		assertThatThrownBy(() -> service.book(command()))
+				.isInstanceOf(CustomerNotFoundException.class)
+				.hasMessage("Customer not found");
+		verify(appointmentRepositoryPort, never()).save(any(Appointment.class));
+	}
+
+	@Test
 	void failWhenCustomerIsInactive() {
 		BookAppointmentService service = service();
 

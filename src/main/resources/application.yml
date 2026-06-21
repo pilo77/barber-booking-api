@@ -25,6 +25,21 @@ server:
 
 booking:
   slot-step-minutes: ${BOOKING_SLOT_STEP_MINUTES:15}
+  public:
+    idempotency:
+      in-progress-ttl: ${PUBLIC_BOOKING_IDEMPOTENCY_IN_PROGRESS_TTL:2m}
+    rate-limit:
+      ip-max-attempts: ${PUBLIC_BOOKING_RATE_LIMIT_IP_MAX_ATTEMPTS:10}
+      ip-window: ${PUBLIC_BOOKING_RATE_LIMIT_IP_WINDOW:1m}
+      phone-max-attempts: ${PUBLIC_BOOKING_RATE_LIMIT_PHONE_MAX_ATTEMPTS:3}
+      phone-window: ${PUBLIC_BOOKING_RATE_LIMIT_PHONE_WINDOW:10m}
+
+app:
+  jwt:
+    secret: ${APP_JWT_SECRET}
+    expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:60}
+  bootstrap:
+    token: ${APP_BOOTSTRAP_TOKEN:}
 
 management:
   endpoints:

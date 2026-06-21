@@ -22,6 +22,10 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   `@Service`) están anotadas con Spring para facilitar inyección y pruebas.
   Esto es deliberado y aceptable en este proyecto; sin embargo no debe
   presentarse como "100% puro" hexagonal en entrevistas.
+- **Catálogo público de servicios por branch:** HU-20 valida que la branch
+  pertenece a la company pública, pero devuelve el catálogo visible de servicios
+  de esa company. La implementación de un catálogo de servicios específico por
+  branch queda para una HU futura.
 
 ## Decisiones tomadas
 
@@ -38,6 +42,58 @@ auditoría técnica (HU-12) y las decisiones tomadas para la versión actual.
   separación más estricta.
 - Añadir documentación en `README.md` sobre cómo ejecutar tests con Docker en
   Windows y cómo configurar CI para que ejecute las pruebas de integración.
+- Reemplazar los headers temporales `X-Company-Id` y `X-Branch-Id` por tenant
+  derivado del contexto de seguridad/JWT en HU-18. Estado: implementado como
+  prioridad principal. Los headers siguen existiendo como fallback temporal
+  cuando no hay usuario autenticado.
+- Limitar rol `BARBER` a su propio barbero quedo cubierto en HU-19 mediante
+  `user_accounts.barber_id`.
+- `COMPANY_OWNER` actualmente crea usuarios en el tenant/branch derivado del
+  JWT. La gestion completa multi-branch de usuarios dentro de una company queda
+  pendiente.
+
+## HU-22 public booking anti-abuse limitations
+
+- El rate limiter de booking publico vive en memoria y se aplica por instancia.
+  Reiniciar o escalar horizontalmente el backend reinicia o divide las cuotas.
+- La IP usada es `HttpServletRequest.getRemoteAddr()`. No se procesa
+  `X-Forwarded-For` hasta definir una lista/configuracion de proxies confiables.
+- Antes de exposicion publica de alto trafico, mover cuotas a Redis, API Gateway
+  o WAF y evaluar captcha/challenge adaptativo.
+- Las filas idempotentes no tienen limpieza automatica todavia. Definir una
+  retencion y un job seguro antes de que el volumen sea significativo.
+- No existe estado persistido `FAILED`: el diseño actual revierte el claim
+  `IN_PROGRESS` junto con la reserva fallida. Si en el futuro el procesamiento
+  se separa en transacciones o colas, habrá que introducir recuperación de
+  claims expirados y estado de fallo reintentable.
+- Dos keys distintas concurrentes para un customer nuevo con el mismo telefono
+  todavia pueden competir por la restriccion unica de customer y devolver 409.
+
+## HU-18/HU-19 Auth/RBAC limitations
+
+HU-18 implemento una base funcional de autenticacion y RBAC. HU-19 agrego
+hardening de ownership para los flujos actuales mas sensibles: user accounts,
+agenda, dashboard, availability y lifecycle de citas. Esto mejora la seguridad
+operativa, pero todavia no debe tratarse como autorizacion final completa de
+produccion para modulos futuros.
+
+Limitaciones documentadas antes de merge:
+
+- Spring Security sigue siendo una primera barrera por rol/path; las reglas de
+  ownership viven en application services/policies.
+- `BRANCH_MANAGER` queda protegido por tenant/branch actual, pero la gestion
+  multi-branch completa requiere endpoints de administracion de branches.
+- `RECEPTIONIST` queda restringido fuera de user accounts y modulos de gestion,
+  pero futuras operaciones de caja/pagos/inventario deben definir permisos
+  propios.
+- JWT todavia no incluye validacion de issuer, audience ni `jti`; debe
+  endurecerse antes de produccion.
+- Falta auditoria persistente de acciones sensibles como bootstrap, login
+  fallido repetido, creacion/desactivacion de usuarios y cambios de roles.
+
+Decision: despues de auditar HU-19, el siguiente bloque funcional puede avanzar
+hacia perfil publico, manteniendo issuer/audience/jti y auditoria persistente
+como hardening previo a produccion.
 
 ## Referencias
 

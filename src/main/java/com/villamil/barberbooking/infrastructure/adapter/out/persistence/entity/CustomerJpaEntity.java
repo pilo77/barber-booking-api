@@ -19,13 +19,16 @@ public class CustomerJpaEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
+	@Column(name = "company_id", nullable = false)
+	private Long companyId;
+
 	@Column(name = "full_name", nullable = false, length = 120)
 	private String fullName;
 
-	@Column(name = "phone", nullable = false, length = 30, unique = true)
+	@Column(name = "phone", nullable = false, length = 30)
 	private String phone;
 
-	@Column(name = "email", length = 120, unique = true)
+	@Column(name = "email", length = 120)
 	private String email;
 
 	@Column(name = "active", nullable = false)
@@ -42,6 +45,7 @@ public class CustomerJpaEntity {
 
 	public CustomerJpaEntity(
 			Long id,
+			Long companyId,
 			String fullName,
 			String phone,
 			String email,
@@ -50,6 +54,7 @@ public class CustomerJpaEntity {
 			Instant updatedAt
 	) {
 		this.id = id;
+		this.companyId = companyId;
 		this.fullName = fullName;
 		this.phone = phone;
 		this.email = email;
@@ -76,6 +81,10 @@ public class CustomerJpaEntity {
 
 	public Long getId() {
 		return id;
+	}
+
+	public Long getCompanyId() {
+		return companyId;
 	}
 
 	public String getFullName() {

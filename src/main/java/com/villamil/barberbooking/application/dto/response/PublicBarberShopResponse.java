@@ -5,6 +5,7 @@ public record PublicBarberShopResponse(
 		String name,
 		String description,
 		String logoUrl,
-		boolean active
+		boolean active,
+		CompanyPublicBrandingResponse branding
 ) {
 }

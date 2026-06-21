@@ -6,9 +6,11 @@ import com.villamil.barberbooking.application.idempotency.PublicBookingIdempoten
 
 public interface PublicBookingIdempotencyPort {
 
-	boolean tryStart(String idempotencyKey, String requestHash);
+	String tryStart(String idempotencyKey, String requestHash);
 
 	Optional<PublicBookingIdempotencyRecord> find(String idempotencyKey);
 
-	void complete(String idempotencyKey, Long appointmentId);
+	boolean lockCurrentClaimForSideEffect(String idempotencyKey, String requestHash, String claimToken);
+
+	void complete(String idempotencyKey, String claimToken, Long appointmentId);
 }

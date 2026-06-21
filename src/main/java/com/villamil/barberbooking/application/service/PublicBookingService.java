@@ -101,8 +101,8 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 		String requestHash = publicBookingRequestHasher.hash(command, tenant.companyId(), tenant.branchId());
 
 		return tenantContextExecutor.withTenant(tenant.toTenantContext(), () -> {
-			boolean started = publicBookingIdempotencyPort.tryStart(idempotencyKey, requestHash);
-			if (!started) {
+			String claimToken = publicBookingIdempotencyPort.tryStart(idempotencyKey, requestHash);
+			if (claimToken == null) {
 				return replayExisting(idempotencyKey, requestHash, tenant, command, requestedCustomer);
 			}
 
@@ -111,6 +111,11 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 			);
 			PublicServiceOfferingResponse service = requireVisibleService(tenant, command.serviceOfferingId());
 			PublicBarberResponse barber = requireVisibleBarber(tenant, command.barberId());
+			if (!publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+					idempotencyKey, requestHash, claimToken
+			)) {
+				throw new IdempotencyConflictException("Idempotency claim is no longer current");
+			}
 			Customer customer = findOrCreateCustomer(requestedCustomer);
 			Appointment appointment = appointmentBookingPolicy.createValidatedAppointment(
 					customer.id(),
@@ -121,7 +126,7 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 					AppointmentStatus.SCHEDULED
 			);
 			Appointment savedAppointment = appointmentRepositoryPort.save(appointment);
-			publicBookingIdempotencyPort.complete(idempotencyKey, savedAppointment.id());
+			publicBookingIdempotencyPort.complete(idempotencyKey, claimToken, savedAppointment.id());
 			return PublicAppointmentResponse.from(
 					savedAppointment,
 					service,

@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
@@ -210,6 +211,72 @@ class SecurityConfigTest {
 	void companyBrandingEndpointWithoutTokenRemainsUnauthorized() throws Exception {
 		mockMvc.perform(get("/api/v1/companies/public-profile"))
 				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void companyOwnerCanGetCompanyBranding() throws Exception {
+		when(getCurrentCompanyPublicBrandingUseCase.getCurrent()).thenReturn(new CompanyPublicBrandingResponse(
+				"Ponte Perro",
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		));
+
+		mockMvc.perform(get("/api/v1/companies/public-profile").with(user("owner@example.com").roles("COMPANY_OWNER")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void companyOwnerCanPutCompanyBranding() throws Exception {
+		when(updateCompanyPublicBrandingUseCase.update(any())).thenReturn(new CompanyPublicBrandingResponse(
+				"Ponte Perro",
+				null,
+				"https://cdn.example.com/logo.png",
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		));
+
+		mockMvc.perform(put("/api/v1/companies/public-profile")
+					.with(user("owner@example.com").roles("COMPANY_OWNER"))
+					.contentType("application/json")
+					.content("""
+							{
+							  "publicName": "Ponte Perro",
+							  "themeMode": "SYSTEM"
+							}
+							"""))
+				.andExpect(status().isOk());
+	}
+
+	@Test
+	void platformOwnerCannotAccessCompanyBrandingEndpoint() throws Exception {
+		mockMvc.perform(get("/api/v1/companies/public-profile").with(user("platform@example.com").roles("PLATFORM_OWNER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void barberCannotAccessCompanyBrandingEndpoint() throws Exception {
+		mockMvc.perform(get("/api/v1/companies/public-profile").with(user("barber@example.com").roles("BARBER")))
+				.andExpect(status().isForbidden());
 	}
 
 	@Test

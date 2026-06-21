@@ -147,9 +147,9 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 				.orElseGet(() -> fallbackBranding(entity));
 		return new PublicBarberShopResponse(
 				entity.getSlug(),
-				entity.getName(),
-				entity.getDescription(),
-				entity.getLogoUrl(),
+				branding.publicName(),
+				branding.publicDescription(),
+				branding.logoUrl(),
 				entity.isActive(),
 				branding
 		);

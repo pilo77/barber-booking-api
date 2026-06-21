@@ -8,5 +8,7 @@ public interface CompanyPublicProfileRepositoryPort {
 
 	Optional<CompanyPublicProfile> findByCompanyId(Long companyId);
 
+	Optional<CompanyPublicProfile> findByCompanyIdOrFallback(Long companyId);
+
 	CompanyPublicProfile save(CompanyPublicProfile profile);
 }

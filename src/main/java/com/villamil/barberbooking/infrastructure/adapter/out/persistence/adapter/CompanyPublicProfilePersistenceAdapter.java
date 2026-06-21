@@ -8,15 +8,22 @@ import com.villamil.barberbooking.application.port.out.CompanyPublicProfileRepos
 import com.villamil.barberbooking.domain.model.CompanyPublicProfile;
 import com.villamil.barberbooking.domain.valueobject.ThemeMode;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.CompanyPublicProfileJpaEntity;
+import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.CompanyJpaEntity;
+import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.CompanyPublicProfileJpaRepository;
 
 @Component
 public class CompanyPublicProfilePersistenceAdapter implements CompanyPublicProfileRepositoryPort {
 
 	private final CompanyPublicProfileJpaRepository companyPublicProfileJpaRepository;
+	private final CompanyJpaRepository companyJpaRepository;
 
-	public CompanyPublicProfilePersistenceAdapter(CompanyPublicProfileJpaRepository companyPublicProfileJpaRepository) {
+	public CompanyPublicProfilePersistenceAdapter(
+			CompanyPublicProfileJpaRepository companyPublicProfileJpaRepository,
+			CompanyJpaRepository companyJpaRepository
+	) {
 		this.companyPublicProfileJpaRepository = companyPublicProfileJpaRepository;
+		this.companyJpaRepository = companyJpaRepository;
 	}
 
 	@Override
@@ -26,8 +33,37 @@ public class CompanyPublicProfilePersistenceAdapter implements CompanyPublicProf
 	}
 
 	@Override
+	public Optional<CompanyPublicProfile> findByCompanyIdOrFallback(Long companyId) {
+		return findByCompanyId(companyId)
+				.or(() -> companyJpaRepository.findById(companyId).map(this::fallbackFromCompany));
+	}
+
+	@Override
 	public CompanyPublicProfile save(CompanyPublicProfile profile) {
 		return toDomain(companyPublicProfileJpaRepository.save(toEntity(profile)));
+	}
+
+	private CompanyPublicProfile fallbackFromCompany(CompanyJpaEntity entity) {
+		return new CompanyPublicProfile(
+				null,
+				entity.getId(),
+				entity.getName(),
+				entity.getDescription(),
+				entity.getLogoUrl(),
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				entity.getCreatedAt(),
+				entity.getUpdatedAt()
+		);
 	}
 
 	private CompanyPublicProfile toDomain(CompanyPublicProfileJpaEntity entity) {

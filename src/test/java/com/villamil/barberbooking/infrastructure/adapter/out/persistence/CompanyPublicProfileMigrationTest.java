@@ -41,13 +41,17 @@ class CompanyPublicProfileMigrationTest {
 				POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
 		); var statement = connection.createStatement()) {
 			try (var rows = statement.executeQuery("""
-					SELECT public_name, public_description, logo_url, theme_mode
+					SELECT public_name, public_description, logo_url, theme_mode, created_at, updated_at
 					FROM company_public_profiles
 					WHERE company_id = 1
 					""")) {
 				assertThat(rows.next()).isTrue();
 				assertThat(rows.getString("public_name")).isEqualTo("Default Barber Company");
+				assertThat(rows.getString("public_description")).isNull();
+				assertThat(rows.getString("logo_url")).isNull();
 				assertThat(rows.getString("theme_mode")).isEqualTo("SYSTEM");
+				assertThat(rows.getTimestamp("created_at")).isNotNull();
+				assertThat(rows.getTimestamp("updated_at")).isNotNull();
 			}
 
 			assertThatThrownBy(() -> statement.executeUpdate("""
@@ -97,6 +101,13 @@ class CompanyPublicProfileMigrationTest {
 						"""))
 					.isInstanceOf(SQLException.class)
 					.satisfies(exception -> assertThat(((SQLException) exception).getSQLState()).isEqualTo("23514"));
+
+			int inserted = statement.executeUpdate("""
+					INSERT INTO company_public_profiles (
+						company_id, theme_mode, secondary_color, accent_color, created_at, updated_at
+					) VALUES (24, 'SYSTEM', '#112233', '#AABBCC', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+					""");
+			assertThat(inserted).isEqualTo(1);
 		}
 	}
 }

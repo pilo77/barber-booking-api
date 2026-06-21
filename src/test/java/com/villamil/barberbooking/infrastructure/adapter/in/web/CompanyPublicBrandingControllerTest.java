@@ -22,6 +22,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.villamil.barberbooking.application.dto.response.CompanyPublicBrandingResponse;
 import com.villamil.barberbooking.application.port.in.GetCurrentCompanyPublicBrandingUseCase;
 import com.villamil.barberbooking.application.port.in.UpdateCompanyPublicBrandingUseCase;
+import com.villamil.barberbooking.domain.exception.BusinessRuleException;
 import com.villamil.barberbooking.domain.valueobject.ThemeMode;
 
 @ExtendWith(MockitoExtension.class)
@@ -92,6 +93,24 @@ class CompanyPublicBrandingControllerTest {
 							"""))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.logoUrl").value("https://cdn.example.com/logo.png"));
+	}
+
+	@Test
+	void updatePropagatesBusinessRuleErrors() throws Exception {
+		when(updateCompanyPublicBrandingUseCase.update(any()))
+				.thenThrow(new BusinessRuleException("Logo URL must use https"));
+
+		mockMvc.perform(put("/api/v1/companies/public-profile")
+					.contentType("application/json")
+					.content("""
+							{
+							  "publicName": "Ponte Perro",
+							  "themeMode": "SYSTEM",
+							  "logoUrl": "javascript:alert(1)"
+							}
+							"""))
+				.andExpect(status().isBadRequest())
+				.andExpect(jsonPath("$.detail").value("Logo URL must use https"));
 	}
 
 	private CompanyPublicBrandingResponse response() {

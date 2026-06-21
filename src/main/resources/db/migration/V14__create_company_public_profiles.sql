@@ -15,8 +15,8 @@ CREATE TABLE company_public_profiles (
     contact_facebook_url VARCHAR(500),
     contact_tiktok_url VARCHAR(500),
     contact_website_url VARCHAR(500),
-    created_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
-    updated_at TIMESTAMP NOT NULL DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'UTC'),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT uq_company_public_profiles_company UNIQUE (company_id),
     CONSTRAINT chk_company_public_profiles_theme_mode CHECK (theme_mode IN ('LIGHT', 'DARK', 'SYSTEM')),
     CONSTRAINT chk_company_public_profiles_primary_color
@@ -42,6 +42,6 @@ SELECT
     description,
     logo_url,
     'SYSTEM',
-    CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
-    CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
 FROM companies;

@@ -83,6 +83,160 @@ class CompanyPublicBrandingValidatorTest {
 	}
 
 	@Test
+	void rejectsJavascriptUrl() {
+		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro",
+				null,
+				"javascript:alert(1)",
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		)))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessage("Logo URL must use https");
+	}
+
+	@Test
+	void rejectsDataUrl() {
+		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro",
+				null,
+				"data:text/plain;base64,QQ==",
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		)))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessage("Logo URL must use https");
+	}
+
+	@Test
+	void rejectsFileUrl() {
+		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro",
+				null,
+				"file:///tmp/logo.png",
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		)))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessage("Logo URL must use https");
+	}
+
+	@Test
+	void rejectsInvalidWhatsappHost() {
+		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro",
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				"https://example.com/wa",
+				null,
+				null,
+				null,
+				null
+		)))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessage("WhatsApp URL must use an allowed WhatsApp host");
+	}
+
+	@Test
+	void rejectsNamedColor() {
+		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro",
+				null,
+				null,
+				null,
+				"red",
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		)))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessage("Primary color must use #RRGGBB format");
+	}
+
+	@Test
+	void rejectsShortHexColor() {
+		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro",
+				null,
+				null,
+				null,
+				"#FFF",
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		)))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessage("Primary color must use #RRGGBB format");
+	}
+
+	@Test
+	void rejectsLongColorString() {
+		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro",
+				null,
+				null,
+				null,
+				"#1234567",
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		)))
+				.isInstanceOf(BusinessRuleException.class)
+				.hasMessage("Primary color must be at most 7 characters");
+	}
+
+	@Test
 	void rejectsHtmlInDescription() {
 		assertThatThrownBy(() -> validator.normalize(new UpdateCompanyPublicBrandingCommand(
 				"Ponte Perro",

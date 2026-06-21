@@ -62,7 +62,7 @@ public class SecurityConfig {
 								"/api/v1/public/barber-shops/*/branches/*/appointments"
 						).permitAll()
 						.requestMatchers("/api/v1/user-accounts/**").hasAnyRole("PLATFORM_OWNER", "COMPANY_OWNER", "BRANCH_MANAGER")
-						.requestMatchers("/api/v1/companies/public-profile").hasAnyRole("PLATFORM_OWNER", "COMPANY_OWNER")
+						.requestMatchers("/api/v1/companies/public-profile").hasRole("COMPANY_OWNER")
 						.requestMatchers(HttpMethod.GET, "/api/v1/barbers/*/availability")
 								.hasAnyRole("PLATFORM_OWNER", "COMPANY_OWNER", "BRANCH_MANAGER", "RECEPTIONIST", "BARBER")
 						.requestMatchers(HttpMethod.GET, "/api/v1/barbers/*/daily-dashboard")

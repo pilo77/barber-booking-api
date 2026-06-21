@@ -76,7 +76,7 @@ class CompanyPublicBrandingService implements
 	}
 
 	private CompanyPublicProfile loadProfile(Long companyId) {
-		return companyPublicProfileRepositoryPort.findByCompanyId(companyId)
+		return companyPublicProfileRepositoryPort.findByCompanyIdOrFallback(companyId)
 				.orElseThrow(() -> new BusinessRuleException("Company public profile not found"));
 	}
 }

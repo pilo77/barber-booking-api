@@ -2,9 +2,11 @@ package com.villamil.barberbooking.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
@@ -36,7 +38,7 @@ class CompanyPublicBrandingServiceTest {
 	void ownerReadsCurrentBranding() {
 		CompanyPublicBrandingService service = service();
 		when(currentUserProvider.currentUser()).thenReturn(Optional.of(companyOwner()));
-		when(companyPublicProfileRepositoryPort.findByCompanyId(7L)).thenReturn(Optional.of(profile()));
+		when(companyPublicProfileRepositoryPort.findByCompanyIdOrFallback(7L)).thenReturn(Optional.of(profile()));
 
 		var response = service.getCurrent();
 
@@ -45,11 +47,24 @@ class CompanyPublicBrandingServiceTest {
 	}
 
 	@Test
-	void ownerUpdatesCurrentBranding() {
+	void ownerReadsFallbackBrandingWhenRowDoesNotExist() {
 		CompanyPublicBrandingService service = service();
 		when(currentUserProvider.currentUser()).thenReturn(Optional.of(companyOwner()));
-		when(companyPublicProfileRepositoryPort.findByCompanyId(7L)).thenReturn(Optional.of(profile()));
-		when(companyPublicProfileRepositoryPort.save(org.mockito.ArgumentMatchers.any())).thenAnswer(invocation -> invocation.getArgument(0));
+		when(companyPublicProfileRepositoryPort.findByCompanyIdOrFallback(7L)).thenReturn(Optional.of(fallbackProfile()));
+
+		var response = service.getCurrent();
+
+		assertThat(response.publicName()).isEqualTo("Ponte Perro Base");
+		assertThat(response.publicDescription()).isEqualTo("Descripcion base");
+		assertThat(response.logoUrl()).isEqualTo("https://cdn.example.com/base-logo.png");
+	}
+
+	@Test
+	void ownerUpdatesExistingBrandingRow() {
+		CompanyPublicBrandingService service = service();
+		when(currentUserProvider.currentUser()).thenReturn(Optional.of(companyOwner()));
+		when(companyPublicProfileRepositoryPort.findByCompanyIdOrFallback(7L)).thenReturn(Optional.of(profile()));
+		when(companyPublicProfileRepositoryPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
 		var response = service.update(new UpdateCompanyPublicBrandingCommand(
 				"Ponte Perro Premium",
@@ -70,7 +85,54 @@ class CompanyPublicBrandingServiceTest {
 
 		assertThat(response.publicName()).isEqualTo("Ponte Perro Premium");
 		assertThat(response.themeMode()).isEqualTo(ThemeMode.DARK);
-		verify(companyPublicProfileRepositoryPort).save(org.mockito.ArgumentMatchers.any());
+		verify(companyPublicProfileRepositoryPort).save(any());
+	}
+
+	@Test
+	void ownerCreatesBrandingRowWhenFallbackIsUsed() {
+		CompanyPublicBrandingService service = service();
+		CompanyPublicProfile fallback = fallbackProfile();
+		when(currentUserProvider.currentUser()).thenReturn(Optional.of(companyOwner()));
+		when(companyPublicProfileRepositoryPort.findByCompanyIdOrFallback(7L)).thenReturn(Optional.of(fallback));
+		when(companyPublicProfileRepositoryPort.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+		var response = service.update(new UpdateCompanyPublicBrandingCommand(
+				"Ponte Perro Premium",
+				"Branding nuevo",
+				"https://cdn.example.com/logo.png",
+				null,
+				"#111111",
+				null,
+				"#D4AF37",
+				ThemeMode.DARK,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
+		));
+
+		assertThat(response.publicName()).isEqualTo("Ponte Perro Premium");
+		verify(companyPublicProfileRepositoryPort).save(any());
+	}
+
+	@Test
+	void platformOwnerWithoutTenantIsRejected() {
+		CompanyPublicBrandingService service = service();
+		when(currentUserProvider.currentUser()).thenReturn(Optional.of(new AuthenticatedUserResponse(
+				3L,
+				"platform@example.com",
+				"Platform",
+				null,
+				null,
+				null,
+				Set.of(Role.PLATFORM_OWNER)
+		)));
+
+		assertThatThrownBy(service::getCurrent)
+				.isInstanceOf(ForbiddenOperationException.class)
+				.hasMessage("User role cannot manage company public branding");
 	}
 
 	@Test
@@ -133,6 +195,30 @@ class CompanyPublicBrandingServiceTest {
 				null,
 				now,
 				now
+		);
+	}
+
+	private CompanyPublicProfile fallbackProfile() {
+		Instant now = Instant.parse("2026-06-21T13:00:00Z");
+		return new CompanyPublicProfile(
+				null,
+				7L,
+				"Ponte Perro Base",
+				"Descripcion base",
+				"https://cdn.example.com/base-logo.png",
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null,
+				now,
+				now.plus(Duration.ofMinutes(5))
 		);
 	}
 }

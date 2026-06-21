@@ -64,10 +64,10 @@ public class CompanyPublicProfileJpaEntity {
 	@Column(name = "contact_website_url", length = 500)
 	private String contactWebsiteUrl;
 
-	@Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP")
+	@Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
 	private Instant createdAt;
 
-	@Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP")
+	@Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
 	private Instant updatedAt;
 
 	protected CompanyPublicProfileJpaEntity() {

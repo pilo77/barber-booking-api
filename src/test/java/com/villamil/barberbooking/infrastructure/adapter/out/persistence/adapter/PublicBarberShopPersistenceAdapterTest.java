@@ -88,6 +88,9 @@ class PublicBarberShopPersistenceAdapterTest {
         var result = adapter.findActiveCompanyBySlug("ponte-perro");
 
         assertThat(result).isPresent();
+        assertThat(result.orElseThrow().name()).isEqualTo("Ponte Perro");
+        assertThat(result.orElseThrow().description()).isEqualTo("Cortes modernos");
+        assertThat(result.orElseThrow().logoUrl()).isEqualTo("https://cdn.example.com/logo.png");
         assertThat(result.orElseThrow().branding().publicName()).isEqualTo("Ponte Perro");
         assertThat(result.orElseThrow().branding().themeMode()).isEqualTo(ThemeMode.SYSTEM);
     }
@@ -115,9 +118,41 @@ class PublicBarberShopPersistenceAdapterTest {
         var result = adapter.findActiveCompanyBySlug("ponte-perro");
 
         assertThat(result).isPresent();
+        assertThat(result.orElseThrow().name()).isEqualTo("Ponte Perro Premium");
+        assertThat(result.orElseThrow().description()).isEqualTo("Branding nuevo");
+        assertThat(result.orElseThrow().logoUrl()).isEqualTo("https://cdn.example.com/logo-new.png");
         assertThat(result.orElseThrow().branding().publicName()).isEqualTo("Ponte Perro Premium");
         assertThat(result.orElseThrow().branding().logoUrl()).isEqualTo("https://cdn.example.com/logo-new.png");
         assertThat(result.orElseThrow().branding().themeMode()).isEqualTo(ThemeMode.DARK);
+    }
+
+    @Test
+    void shouldApplyFieldByFieldFallbackWhenStoredBrandingHasNullValues() {
+        CompanyJpaEntity company = mock(CompanyJpaEntity.class);
+        CompanyPublicProfileJpaEntity profile = mock(CompanyPublicProfileJpaEntity.class);
+
+        when(companyJpaRepository.findBySlugAndActiveTrue("ponte-perro")).thenReturn(Optional.of(company));
+        when(company.getId()).thenReturn(1L);
+        when(company.getSlug()).thenReturn("ponte-perro");
+        when(company.getName()).thenReturn("Ponte Perro");
+        when(company.getDescription()).thenReturn("Descripcion base");
+        when(company.getLogoUrl()).thenReturn("https://cdn.example.com/base-logo.png");
+        when(company.isActive()).thenReturn(true);
+        when(companyPublicProfileJpaRepository.findByCompanyId(1L)).thenReturn(Optional.of(profile));
+        when(profile.getPublicName()).thenReturn(null);
+        when(profile.getPublicDescription()).thenReturn("Descripcion nueva");
+        when(profile.getLogoUrl()).thenReturn(null);
+        when(profile.getThemeMode()).thenReturn(null);
+
+        var result = adapter.findActiveCompanyBySlug("ponte-perro");
+
+        assertThat(result).isPresent();
+        assertThat(result.orElseThrow().name()).isEqualTo("Ponte Perro");
+        assertThat(result.orElseThrow().description()).isEqualTo("Descripcion nueva");
+        assertThat(result.orElseThrow().logoUrl()).isEqualTo("https://cdn.example.com/base-logo.png");
+        assertThat(result.orElseThrow().branding().publicName()).isEqualTo("Ponte Perro");
+        assertThat(result.orElseThrow().branding().logoUrl()).isEqualTo("https://cdn.example.com/base-logo.png");
+        assertThat(result.orElseThrow().branding().themeMode()).isEqualTo(ThemeMode.SYSTEM);
     }
 
     @Test

@@ -10,7 +10,7 @@ import com.villamil.barberbooking.domain.model.Role;
 class CompanyPublicBrandingAuthorizationPolicy {
 
 	void ensureCanManageCompanyBranding(AuthenticatedUserResponse actor) {
-		if (actor.roles().contains(Role.PLATFORM_OWNER) || actor.roles().contains(Role.COMPANY_OWNER)) {
+		if (actor.roles().contains(Role.COMPANY_OWNER)) {
 			return;
 		}
 		throw new ForbiddenOperationException("User role cannot manage company public branding");

@@ -20,6 +20,7 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 
 	public static final String COMPANY_HEADER = "X-Company-Id";
 	public static final String BRANCH_HEADER = "X-Branch-Id";
+	private static final String TENANT_SCOPE_REQUIRED = "Tenant-scoped access requires an authenticated company and branch";
 
 	private final ThreadLocalTenantContextProvider tenantContextProvider;
 
@@ -38,6 +39,9 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 			tenantContextProvider.set(tenantContext);
 			filterChain.doFilter(request, response);
 		}
+		catch (UnscopedAuthenticatedTenantAccessException exception) {
+			response.sendError(HttpServletResponse.SC_FORBIDDEN, exception.getMessage());
+		}
 		catch (IllegalArgumentException exception) {
 			response.sendError(HttpServletResponse.SC_BAD_REQUEST, exception.getMessage());
 		}
@@ -47,7 +51,8 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 	}
 
 	private TenantContext resolveTenant(HttpServletRequest request) {
-		if (request.getRequestURI().startsWith("/api/v1/public/")) {
+		String path = request.getRequestURI();
+		if (!isTenantScopedRoute(path)) {
 			return TenantContext.DEFAULT;
 		}
 		Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -57,11 +62,19 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 			if (principal.user().companyId() != null && principal.user().branchId() != null) {
 				return new TenantContext(principal.user().companyId(), principal.user().branchId());
 			}
-			return TenantContext.DEFAULT;
+			throw new UnscopedAuthenticatedTenantAccessException(TENANT_SCOPE_REQUIRED);
 		}
 		Long companyId = parsePositiveHeader(request, COMPANY_HEADER, TenantContext.DEFAULT_COMPANY_ID);
 		Long branchId = parsePositiveHeader(request, BRANCH_HEADER, TenantContext.DEFAULT_BRANCH_ID);
 		return new TenantContext(companyId, branchId);
+	}
+
+	private boolean isTenantScopedRoute(String path) {
+		return path.startsWith("/api/v1/customers")
+				|| path.startsWith("/api/v1/barbers")
+				|| path.startsWith("/api/v1/services")
+				|| path.startsWith("/api/v1/appointments")
+				|| path.startsWith("/api/v1/companies/public-profile");
 	}
 
 	private Long parsePositiveHeader(HttpServletRequest request, String headerName, Long defaultValue) {
@@ -78,6 +91,12 @@ public class TemporaryTenantHeaderFilter extends OncePerRequestFilter {
 		}
 		catch (NumberFormatException exception) {
 			throw new IllegalArgumentException(headerName + " must be a valid number");
+		}
+	}
+
+	private static final class UnscopedAuthenticatedTenantAccessException extends RuntimeException {
+		private UnscopedAuthenticatedTenantAccessException(String message) {
+			super(message);
 		}
 	}
 }

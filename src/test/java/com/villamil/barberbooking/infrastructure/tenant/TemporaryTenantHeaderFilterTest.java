@@ -46,7 +46,7 @@ class TemporaryTenantHeaderFilterTest {
 
 	@Test
 	void shouldUseTenantHeadersWhenPresent() throws ServletException, IOException {
-		MockHttpServletRequest request = new MockHttpServletRequest();
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/customers");
 		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "2");
 		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "3");
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -56,6 +56,7 @@ class TemporaryTenantHeaderFilterTest {
 
 		assertThat(chain.tenantContext).isEqualTo(new TenantContext(2L, 3L));
 		assertThat(response.getStatus()).isEqualTo(200);
+		assertThat(tenantContextProvider.currentTenant()).isEqualTo(TenantContext.DEFAULT);
 	}
 
 	@Test
@@ -76,7 +77,7 @@ class TemporaryTenantHeaderFilterTest {
 		SecurityContextHolder.getContext().setAuthentication(
 				new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
 		);
-		MockHttpServletRequest request = new MockHttpServletRequest();
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/customers");
 		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "2");
 		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "3");
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -86,10 +87,11 @@ class TemporaryTenantHeaderFilterTest {
 
 		assertThat(chain.tenantContext).isEqualTo(new TenantContext(7L, 8L));
 		assertThat(response.getStatus()).isEqualTo(200);
+		assertThat(tenantContextProvider.currentTenant()).isEqualTo(TenantContext.DEFAULT);
 	}
 
 	@Test
-	void shouldNotUseTenantHeadersForAuthenticatedUserWithoutTenant() throws ServletException, IOException {
+	void shouldNotUseTenantHeadersForAuthenticatedUserWithoutTenantOnNonTenantRoute() throws ServletException, IOException {
 		AuthenticatedUserResponse user = new AuthenticatedUserResponse(
 				9L,
 				"platform@example.com",
@@ -106,7 +108,7 @@ class TemporaryTenantHeaderFilterTest {
 		SecurityContextHolder.getContext().setAuthentication(
 				new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
 		);
-		MockHttpServletRequest request = new MockHttpServletRequest();
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/user-accounts");
 		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "2");
 		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "3");
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -119,8 +121,39 @@ class TemporaryTenantHeaderFilterTest {
 	}
 
 	@Test
+	void shouldRejectAuthenticatedUserWithoutTenantOnTenantScopedRoute() throws ServletException, IOException {
+		AuthenticatedUserResponse user = new AuthenticatedUserResponse(
+				9L,
+				"platform@example.com",
+				"Platform User",
+				null,
+				null,
+				null,
+				Set.of(Role.PLATFORM_OWNER)
+		);
+		AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
+				user,
+				Set.of(new SimpleGrantedAuthority("ROLE_PLATFORM_OWNER"))
+		);
+		SecurityContextHolder.getContext().setAuthentication(
+				new UsernamePasswordAuthenticationToken(principal, null, principal.getAuthorities())
+		);
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/customers");
+		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "2");
+		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "3");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		CapturingFilterChain chain = new CapturingFilterChain(tenantContextProvider);
+
+		filter.doFilter(request, response, chain);
+
+		assertThat(response.getStatus()).isEqualTo(403);
+		assertThat(chain.tenantContext).isNull();
+		assertThat(tenantContextProvider.currentTenant()).isEqualTo(TenantContext.DEFAULT);
+	}
+
+	@Test
 	void shouldRejectInvalidTenantHeader() throws ServletException, IOException {
-		MockHttpServletRequest request = new MockHttpServletRequest();
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/customers");
 		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "invalid");
 		MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -135,6 +168,34 @@ class TemporaryTenantHeaderFilterTest {
 				"GET",
 				"/api/v1/public/barber-shops/ponte-perro"
 		);
+		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "invalid");
+		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "999");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		CapturingFilterChain chain = new CapturingFilterChain(tenantContextProvider);
+
+		filter.doFilter(request, response, chain);
+
+		assertThat(chain.tenantContext).isEqualTo(TenantContext.DEFAULT);
+		assertThat(response.getStatus()).isEqualTo(200);
+	}
+
+	@Test
+	void shouldIgnoreTenantHeadersForAuthRoutes() throws ServletException, IOException {
+		MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/v1/auth/login");
+		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "invalid");
+		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "999");
+		MockHttpServletResponse response = new MockHttpServletResponse();
+		CapturingFilterChain chain = new CapturingFilterChain(tenantContextProvider);
+
+		filter.doFilter(request, response, chain);
+
+		assertThat(chain.tenantContext).isEqualTo(TenantContext.DEFAULT);
+		assertThat(response.getStatus()).isEqualTo(200);
+	}
+
+	@Test
+	void shouldIgnoreTenantHeadersForSwaggerRoutes() throws ServletException, IOException {
+		MockHttpServletRequest request = new MockHttpServletRequest("GET", "/swagger-ui/index.html");
 		request.addHeader(TemporaryTenantHeaderFilter.COMPANY_HEADER, "invalid");
 		request.addHeader(TemporaryTenantHeaderFilter.BRANCH_HEADER, "999");
 		MockHttpServletResponse response = new MockHttpServletResponse();

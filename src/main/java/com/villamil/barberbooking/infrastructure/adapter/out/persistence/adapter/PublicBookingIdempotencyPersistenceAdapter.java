@@ -58,6 +58,14 @@ public class PublicBookingIdempotencyPersistenceAdapter implements PublicBooking
 	}
 
 	@Override
+	public boolean lockCurrentClaimForSideEffect(String idempotencyKey, String requestHash, String claimToken) {
+		TenantContext tenant = tenantContextProvider.currentTenant();
+		return repository.lockCurrentClaimForSideEffect(
+				tenant.companyId(), tenant.branchId(), idempotencyKey, requestHash, claimToken
+		).isPresent();
+	}
+
+	@Override
 	public void complete(String idempotencyKey, String claimToken, Long appointmentId) {
 		TenantContext tenant = tenantContextProvider.currentTenant();
 		int updated = repository.complete(

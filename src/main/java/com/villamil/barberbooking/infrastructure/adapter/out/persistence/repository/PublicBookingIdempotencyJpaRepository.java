@@ -11,7 +11,7 @@ import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.
 public interface PublicBookingIdempotencyJpaRepository
 		extends JpaRepository<PublicBookingIdempotencyJpaEntity, Long> {
 
-	@Modifying(flushAutomatically = true)
+	@Modifying(flushAutomatically = true, clearAutomatically = true)
 	@Query(value = """
 			INSERT INTO public_booking_idempotency_keys (
 				company_id, branch_id, idempotency_key, request_hash, claim_token, status
@@ -41,6 +41,25 @@ public interface PublicBookingIdempotencyJpaRepository
 			Long companyId,
 			Long branchId,
 			String idempotencyKey
+	);
+
+	@Query(value = """
+			SELECT id
+			FROM public_booking_idempotency_keys
+			WHERE company_id = :companyId
+				AND branch_id = :branchId
+				AND idempotency_key = :idempotencyKey
+				AND request_hash = :requestHash
+				AND claim_token = :claimToken
+				AND status = 'IN_PROGRESS'
+			FOR UPDATE
+			""", nativeQuery = true)
+	Optional<Long> lockCurrentClaimForSideEffect(
+			Long companyId,
+			Long branchId,
+			String idempotencyKey,
+			String requestHash,
+			String claimToken
 	);
 
 	@Modifying(flushAutomatically = true, clearAutomatically = true)

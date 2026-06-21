@@ -159,6 +159,9 @@ class PublicBookingServiceTest {
 				5L, 2L, 1L, START_AT, AppointmentSource.ONLINE, AppointmentStatus.SCHEDULED))
 				.thenReturn(unsaved);
 		when(appointmentRepositoryPort.save(unsaved)).thenReturn(saved);
+		when(publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+				"booking-key-123", "same-hash", "claim-token-123"
+		)).thenReturn(true);
 
 		PublicAppointmentResponse response = service.create(command());
 
@@ -185,6 +188,9 @@ class PublicBookingServiceTest {
 				5L, 2L, 1L, START_AT, AppointmentSource.ONLINE, AppointmentStatus.SCHEDULED))
 				.thenReturn(unsaved);
 		when(appointmentRepositoryPort.save(unsaved)).thenReturn(appointment(10L));
+		when(publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+				"booking-key-123", "same-hash", "claim-token-123"
+		)).thenReturn(true);
 
 		service.create(command());
 
@@ -232,6 +238,9 @@ class PublicBookingServiceTest {
 		executeTenantActions();
 		mockPublicResources();
 		mockNewIdempotentRequest();
+		when(publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+				"booking-key-123", "same-hash", "claim-token-123"
+		)).thenReturn(true);
 		when(customerRepositoryPort.findByPhone("3001234567")).thenReturn(Optional.of(customer));
 		when(appointmentBookingPolicy.createValidatedAppointment(
 				5L, 2L, 1L, START_AT, AppointmentSource.ONLINE, AppointmentStatus.SCHEDULED))
@@ -343,6 +352,9 @@ class PublicBookingServiceTest {
 		mockPublicResources();
 		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("same-hash");
 		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn("reclaimed-claim-token");
+		when(publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+				"booking-key-123", "same-hash", "reclaimed-claim-token"
+		)).thenReturn(true);
 		when(customerRepositoryPort.findByPhone("3001234567")).thenReturn(Optional.of(customer));
 		when(appointmentBookingPolicy.createValidatedAppointment(
 				5L, 2L, 1L, START_AT, AppointmentSource.ONLINE, AppointmentStatus.SCHEDULED))
@@ -353,6 +365,55 @@ class PublicBookingServiceTest {
 
 		assertThat(response.id()).isEqualTo(10L);
 		verify(publicBookingIdempotencyPort).complete("booking-key-123", "reclaimed-claim-token", 10L);
+	}
+
+	@Test
+	void staleClaimCannotReachAppointmentCreationAfterReclaim() {
+		executeTenantActions();
+		mockPublicResources();
+		mockNewIdempotentRequest();
+		when(publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+				"booking-key-123", "same-hash", "claim-token-123"
+		)).thenReturn(false);
+
+		assertThatThrownBy(() -> service.create(command()))
+				.isInstanceOf(IdempotencyConflictException.class)
+				.hasMessage("Idempotency claim is no longer current");
+		verify(customerRepositoryPort, never()).findByPhone(any());
+		verify(customerRepositoryPort, never()).save(any());
+		verify(appointmentBookingPolicy, never()).createValidatedAppointment(any(), any(), any(), any(), any(), any());
+		verify(appointmentRepositoryPort, never()).save(any());
+		verify(publicBookingIdempotencyPort, never()).complete(any(), any(), any());
+	}
+
+	@Test
+	void staleClaimValidationFailsWhenClaimTokenNoLongerMatches() {
+		executeTenantActions();
+		mockPublicResources();
+		mockNewIdempotentRequest();
+		when(publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+				"booking-key-123", "same-hash", "claim-token-123"
+		)).thenReturn(false);
+
+		assertThatThrownBy(() -> service.create(command()))
+				.isInstanceOf(IdempotencyConflictException.class)
+				.hasMessage("Idempotency claim is no longer current");
+		verify(appointmentRepositoryPort, never()).save(any());
+	}
+
+	@Test
+	void staleClaimValidationFailsWhenRequestHashNoLongerMatches() {
+		executeTenantActions();
+		mockPublicResources();
+		mockNewIdempotentRequest();
+		when(publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+				"booking-key-123", "same-hash", "claim-token-123"
+		)).thenReturn(false);
+
+		assertThatThrownBy(() -> service.create(command()))
+				.isInstanceOf(IdempotencyConflictException.class)
+				.hasMessage("Idempotency claim is no longer current");
+		verify(appointmentRepositoryPort, never()).save(any());
 	}
 
 	private void executeTenantActions() {

@@ -111,6 +111,11 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 			);
 			PublicServiceOfferingResponse service = requireVisibleService(tenant, command.serviceOfferingId());
 			PublicBarberResponse barber = requireVisibleBarber(tenant, command.barberId());
+			if (!publicBookingIdempotencyPort.lockCurrentClaimForSideEffect(
+					idempotencyKey, requestHash, claimToken
+			)) {
+				throw new IdempotencyConflictException("Idempotency claim is no longer current");
+			}
 			Customer customer = findOrCreateCustomer(requestedCustomer);
 			Appointment appointment = appointmentBookingPolicy.createValidatedAppointment(
 					customer.id(),

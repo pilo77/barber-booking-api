@@ -9,32 +9,39 @@ import com.villamil.barberbooking.application.dto.response.PublicBarberResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBranchResponse;
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
+import com.villamil.barberbooking.application.dto.response.CompanyPublicBrandingResponse;
 import com.villamil.barberbooking.application.port.out.PublicBarberShopRepositoryPort;
 import com.villamil.barberbooking.application.tenant.PublicTenantContext;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.BarberJpaEntity;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.BranchJpaEntity;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.CompanyJpaEntity;
+import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.CompanyPublicProfileJpaEntity;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.ServiceOfferingJpaEntity;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.BarberJpaRepository;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.BranchJpaRepository;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.CompanyJpaRepository;
+import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.CompanyPublicProfileJpaRepository;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.ServiceOfferingJpaRepository;
+import com.villamil.barberbooking.domain.valueobject.ThemeMode;
 
 @Component
 public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepositoryPort {
 
 	private final CompanyJpaRepository companyJpaRepository;
+	private final CompanyPublicProfileJpaRepository companyPublicProfileJpaRepository;
 	private final BranchJpaRepository branchJpaRepository;
 	private final ServiceOfferingJpaRepository serviceOfferingJpaRepository;
 	private final BarberJpaRepository barberJpaRepository;
 
 	public PublicBarberShopPersistenceAdapter(
 			CompanyJpaRepository companyJpaRepository,
+			CompanyPublicProfileJpaRepository companyPublicProfileJpaRepository,
 			BranchJpaRepository branchJpaRepository,
 			ServiceOfferingJpaRepository serviceOfferingJpaRepository,
 			BarberJpaRepository barberJpaRepository
 	) {
 		this.companyJpaRepository = companyJpaRepository;
+		this.companyPublicProfileJpaRepository = companyPublicProfileJpaRepository;
 		this.branchJpaRepository = branchJpaRepository;
 		this.serviceOfferingJpaRepository = serviceOfferingJpaRepository;
 		this.barberJpaRepository = barberJpaRepository;
@@ -135,12 +142,54 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 	}
 
 	private PublicBarberShopResponse toPublicCompany(CompanyJpaEntity entity) {
+		CompanyPublicBrandingResponse branding = companyPublicProfileJpaRepository.findByCompanyId(entity.getId())
+				.map(profile -> toBranding(entity, profile))
+				.orElseGet(() -> fallbackBranding(entity));
 		return new PublicBarberShopResponse(
 				entity.getSlug(),
 				entity.getName(),
 				entity.getDescription(),
 				entity.getLogoUrl(),
-				entity.isActive()
+				entity.isActive(),
+				branding
+		);
+	}
+
+	private CompanyPublicBrandingResponse toBranding(CompanyJpaEntity company, CompanyPublicProfileJpaEntity profile) {
+		return new CompanyPublicBrandingResponse(
+				profile.getPublicName() == null ? company.getName() : profile.getPublicName(),
+				profile.getPublicDescription() == null ? company.getDescription() : profile.getPublicDescription(),
+				profile.getLogoUrl() == null ? company.getLogoUrl() : profile.getLogoUrl(),
+				profile.getCoverImageUrl(),
+				profile.getPrimaryColor(),
+				profile.getSecondaryColor(),
+				profile.getAccentColor(),
+				profile.getThemeMode() == null ? ThemeMode.SYSTEM : ThemeMode.valueOf(profile.getThemeMode()),
+				profile.getContactPhone(),
+				profile.getContactWhatsappUrl(),
+				profile.getContactInstagramUrl(),
+				profile.getContactFacebookUrl(),
+				profile.getContactTiktokUrl(),
+				profile.getContactWebsiteUrl()
+		);
+	}
+
+	private CompanyPublicBrandingResponse fallbackBranding(CompanyJpaEntity entity) {
+		return new CompanyPublicBrandingResponse(
+				entity.getName(),
+				entity.getDescription(),
+				entity.getLogoUrl(),
+				null,
+				null,
+				null,
+				null,
+				ThemeMode.SYSTEM,
+				null,
+				null,
+				null,
+				null,
+				null,
+				null
 		);
 	}
 

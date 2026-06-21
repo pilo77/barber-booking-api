@@ -29,6 +29,7 @@ import com.villamil.barberbooking.application.dto.response.PublicBarberResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBranchResponse;
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
+import com.villamil.barberbooking.application.dto.response.CompanyPublicBrandingResponse;
 import com.villamil.barberbooking.application.port.in.CreatePublicAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.GetPublicBarberAvailabilityUseCase;
 import com.villamil.barberbooking.application.port.in.GetPublicBarberShopUseCase;
@@ -41,6 +42,7 @@ import com.villamil.barberbooking.application.exception.PublicBookingRateLimitEx
 import com.villamil.barberbooking.domain.exception.PublicResourceNotFoundException;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
+import com.villamil.barberbooking.domain.valueobject.ThemeMode;
 
 @ExtendWith(MockitoExtension.class)
 class PublicBarberShopControllerTest {
@@ -94,14 +96,32 @@ class PublicBarberShopControllerTest {
 						"Ponte Perro Barberia",
 						"Cortes modernos",
 						"https://cdn.example.com/logo.png",
-						true
+						true,
+						new CompanyPublicBrandingResponse(
+								"Ponte Perro Barberia",
+								"Cortes modernos",
+								"https://cdn.example.com/logo.png",
+								null,
+								"#111111",
+								null,
+								"#D4AF37",
+								ThemeMode.SYSTEM,
+								null,
+								null,
+								null,
+								null,
+								null,
+								null
+						)
 				));
 
 		mockMvc.perform(get("/api/v1/public/barber-shops/ponte-perro"))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.slug").value("ponte-perro"))
 				.andExpect(jsonPath("$.name").value("Ponte Perro Barberia"))
-				.andExpect(jsonPath("$.description").value("Cortes modernos"));
+				.andExpect(jsonPath("$.description").value("Cortes modernos"))
+				.andExpect(jsonPath("$.branding.publicName").value("Ponte Perro Barberia"))
+				.andExpect(jsonPath("$.branding.themeMode").value("SYSTEM"));
 	}
 
 	@Test

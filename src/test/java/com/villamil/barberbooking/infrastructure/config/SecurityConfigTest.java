@@ -24,7 +24,9 @@ import com.villamil.barberbooking.application.dto.response.CustomerResponse;
 import com.villamil.barberbooking.application.dto.response.BarberAvailabilityResponse;
 import com.villamil.barberbooking.application.dto.response.PublicAppointmentResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
+import com.villamil.barberbooking.application.dto.response.CompanyPublicBrandingResponse;
 import com.villamil.barberbooking.application.port.in.CreateCustomerUseCase;
+import com.villamil.barberbooking.application.port.in.GetCurrentCompanyPublicBrandingUseCase;
 import com.villamil.barberbooking.application.port.in.CreatePublicAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.DeactivateCustomerUseCase;
 import com.villamil.barberbooking.application.port.in.GetCustomerUseCase;
@@ -35,17 +37,20 @@ import com.villamil.barberbooking.application.port.in.ListCustomersUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicBarbersUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicBranchesUseCase;
 import com.villamil.barberbooking.application.port.in.ListPublicServicesUseCase;
+import com.villamil.barberbooking.application.port.in.UpdateCompanyPublicBrandingUseCase;
 import com.villamil.barberbooking.application.port.in.UpdateCustomerUseCase;
 import com.villamil.barberbooking.application.port.out.JwtTokenPort;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
+import com.villamil.barberbooking.domain.valueobject.ThemeMode;
+import com.villamil.barberbooking.infrastructure.adapter.in.web.CompanyPublicBrandingController;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.CustomerController;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.PublicBarberShopController;
 import com.villamil.barberbooking.infrastructure.security.JwtAuthenticationFilter;
 import com.villamil.barberbooking.infrastructure.tenant.TemporaryTenantHeaderFilter;
 import com.villamil.barberbooking.infrastructure.tenant.ThreadLocalTenantContextProvider;
 
-@WebMvcTest({CustomerController.class, PublicBarberShopController.class})
+@WebMvcTest({CustomerController.class, PublicBarberShopController.class, CompanyPublicBrandingController.class})
 @Import({
 		SecurityConfig.class,
 		JwtAuthenticationFilter.class,
@@ -96,6 +101,12 @@ class SecurityConfigTest {
 	@MockitoBean
 	private CreatePublicAppointmentUseCase createPublicAppointmentUseCase;
 
+	@MockitoBean
+	private GetCurrentCompanyPublicBrandingUseCase getCurrentCompanyPublicBrandingUseCase;
+
+	@MockitoBean
+	private UpdateCompanyPublicBrandingUseCase updateCompanyPublicBrandingUseCase;
+
 	@Test
 	void protectedEndpointWithoutTokenReturnsUnauthorized() throws Exception {
 		mockMvc.perform(get("/api/v1/customers"))
@@ -105,7 +116,29 @@ class SecurityConfigTest {
 	@Test
 	void publicEndpointWithoutTokenReturnsOk() throws Exception {
 		when(getPublicBarberShopUseCase.getBySlug("ponte-perro"))
-				.thenReturn(new PublicBarberShopResponse("ponte-perro", "Ponte Perro", null, null, true));
+				.thenReturn(new PublicBarberShopResponse(
+						"ponte-perro",
+						"Ponte Perro",
+						null,
+						null,
+						true,
+						new CompanyPublicBrandingResponse(
+								"Ponte Perro",
+								null,
+								null,
+								null,
+								null,
+								null,
+								null,
+								ThemeMode.SYSTEM,
+								null,
+								null,
+								null,
+								null,
+								null,
+								null
+						)
+				));
 
 		mockMvc.perform(get("/api/v1/public/barber-shops/ponte-perro"))
 				.andExpect(status().isOk());
@@ -170,6 +203,12 @@ class SecurityConfigTest {
 	@Test
 	void userAccountsEndpointWithoutTokenRemainsUnauthorized() throws Exception {
 		mockMvc.perform(get("/api/v1/user-accounts"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
+	void companyBrandingEndpointWithoutTokenRemainsUnauthorized() throws Exception {
+		mockMvc.perform(get("/api/v1/companies/public-profile"))
 				.andExpect(status().isUnauthorized());
 	}
 

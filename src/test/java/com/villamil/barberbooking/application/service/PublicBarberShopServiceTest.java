@@ -18,8 +18,10 @@ import com.villamil.barberbooking.application.dto.response.PublicBarberResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBranchResponse;
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
+import com.villamil.barberbooking.application.dto.response.CompanyPublicBrandingResponse;
 import com.villamil.barberbooking.application.port.out.PublicBarberShopRepositoryPort;
 import com.villamil.barberbooking.domain.exception.PublicResourceNotFoundException;
+import com.villamil.barberbooking.domain.valueobject.ThemeMode;
 
 @ExtendWith(MockitoExtension.class)
 class PublicBarberShopServiceTest {
@@ -35,7 +37,23 @@ class PublicBarberShopServiceTest {
 				"Ponte Perro Barberia",
 				"Cortes modernos",
 				"https://cdn.example.com/logo.png",
-				true
+				true,
+				new CompanyPublicBrandingResponse(
+						"Ponte Perro Barberia",
+						"Cortes modernos",
+						"https://cdn.example.com/logo.png",
+						null,
+						null,
+						null,
+						null,
+						ThemeMode.SYSTEM,
+						null,
+						null,
+						null,
+						null,
+						null,
+						null
+				)
 		);
 
 		when(publicBarberShopRepositoryPort.findActiveCompanyBySlug("ponte-perro"))
@@ -45,6 +63,7 @@ class PublicBarberShopServiceTest {
 
 		assertThat(response.slug()).isEqualTo("ponte-perro");
 		assertThat(response.description()).isEqualTo("Cortes modernos");
+		assertThat(response.branding().themeMode()).isEqualTo(ThemeMode.SYSTEM);
 	}
 
 	@Test

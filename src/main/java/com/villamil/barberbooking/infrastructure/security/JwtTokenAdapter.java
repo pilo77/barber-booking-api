@@ -27,10 +27,24 @@ public class JwtTokenAdapter implements JwtTokenPort {
 	private final SecretKey signingKey;
 	private final long expirationMinutes;
 
+	static final String KNOWN_INSECURE_DEFAULT = "local-dev-only-change-this-secret-with-at-least-32-chars";
+	static final int MIN_SECRET_LENGTH = 32;
+
 	public JwtTokenAdapter(
 			@Value("${app.jwt.secret}") String secret,
 			@Value("${app.jwt.expiration-minutes:60}") long expirationMinutes
 	) {
+		if (secret == null || secret.isBlank()) {
+			throw new IllegalStateException("app.jwt.secret must not be null or blank");
+		}
+		if (secret.length() < MIN_SECRET_LENGTH) {
+			throw new IllegalStateException(
+					"app.jwt.secret must be at least " + MIN_SECRET_LENGTH + " characters");
+		}
+		if (KNOWN_INSECURE_DEFAULT.equals(secret)) {
+			throw new IllegalStateException(
+					"app.jwt.secret is set to the known insecure default value; configure a unique secret");
+		}
 		this.signingKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
 		this.expirationMinutes = expirationMinutes;
 	}

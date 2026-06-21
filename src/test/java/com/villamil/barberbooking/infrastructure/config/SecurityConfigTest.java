@@ -214,6 +214,12 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void customersEndpointWithoutTokenRemainsUnauthorized() throws Exception {
+		mockMvc.perform(get("/api/v1/customers"))
+				.andExpect(status().isUnauthorized());
+	}
+
+	@Test
 	void companyOwnerCanGetCompanyBranding() throws Exception {
 		when(getCurrentCompanyPublicBrandingUseCase.getCurrent()).thenReturn(new CompanyPublicBrandingResponse(
 				"Ponte Perro",
@@ -268,6 +274,14 @@ class SecurityConfigTest {
 	}
 
 	@Test
+	void companyOwnerCanListCustomers() throws Exception {
+		when(listCustomersUseCase.list()).thenReturn(List.of(customer()));
+
+		mockMvc.perform(get("/api/v1/customers").with(user("owner@example.com").roles("COMPANY_OWNER")))
+				.andExpect(status().isOk());
+	}
+
+	@Test
 	void platformOwnerCannotAccessCompanyBrandingEndpoint() throws Exception {
 		mockMvc.perform(get("/api/v1/companies/public-profile").with(user("platform@example.com").roles("PLATFORM_OWNER")))
 				.andExpect(status().isForbidden());
@@ -276,6 +290,30 @@ class SecurityConfigTest {
 	@Test
 	void barberCannotAccessCompanyBrandingEndpoint() throws Exception {
 		mockMvc.perform(get("/api/v1/companies/public-profile").with(user("barber@example.com").roles("BARBER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void platformOwnerCannotAccessCustomersEndpoint() throws Exception {
+		mockMvc.perform(get("/api/v1/customers").with(user("platform@example.com").roles("PLATFORM_OWNER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void platformOwnerCannotAccessBarberAvailabilityEndpoint() throws Exception {
+		mockMvc.perform(get("/api/v1/barbers/2/availability").with(user("platform@example.com").roles("PLATFORM_OWNER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void platformOwnerCannotAccessAppointmentsEndpoint() throws Exception {
+		mockMvc.perform(get("/api/v1/appointments/10").with(user("platform@example.com").roles("PLATFORM_OWNER")))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void platformOwnerCannotAccessServicesEndpoint() throws Exception {
+		mockMvc.perform(get("/api/v1/services").with(user("platform@example.com").roles("PLATFORM_OWNER")))
 				.andExpect(status().isForbidden());
 	}
 

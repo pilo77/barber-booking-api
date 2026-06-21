@@ -8,6 +8,7 @@ import java.util.Deque;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.villamil.barberbooking.application.exception.PublicBookingRateLimitExceededException;
@@ -19,6 +20,7 @@ class PublicBookingRateLimiter {
 	private final PublicBookingRateLimitProperties properties;
 	private final Clock clock;
 
+	@Autowired
 	PublicBookingRateLimiter(PublicBookingRateLimitProperties properties) {
 		this(properties, Clock.systemUTC());
 	}

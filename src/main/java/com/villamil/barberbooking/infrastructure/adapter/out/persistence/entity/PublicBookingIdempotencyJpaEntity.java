@@ -35,6 +35,9 @@ public class PublicBookingIdempotencyJpaEntity {
 	@Column(name = "status", nullable = false, length = 30)
 	private String status;
 
+	@Column(name = "claim_token", nullable = false, length = 64)
+	private String claimToken;
+
 	@Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMPTZ")
 	private Instant createdAt;
 

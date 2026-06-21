@@ -14,11 +14,28 @@ public interface PublicBookingIdempotencyJpaRepository
 	@Modifying(flushAutomatically = true)
 	@Query(value = """
 			INSERT INTO public_booking_idempotency_keys (
-				company_id, branch_id, idempotency_key, request_hash, status
-			) VALUES (:companyId, :branchId, :idempotencyKey, :requestHash, 'IN_PROGRESS')
-			ON CONFLICT (company_id, branch_id, idempotency_key) DO NOTHING
+				company_id, branch_id, idempotency_key, request_hash, claim_token, status
+			) VALUES (:companyId, :branchId, :idempotencyKey, :requestHash, :claimToken, 'IN_PROGRESS')
+			ON CONFLICT (company_id, branch_id, idempotency_key) DO UPDATE
+			SET request_hash = EXCLUDED.request_hash,
+				claim_token = EXCLUDED.claim_token,
+				status = 'IN_PROGRESS',
+				appointment_id = NULL,
+				completed_at = NULL,
+				created_at = CURRENT_TIMESTAMP
+			WHERE public_booking_idempotency_keys.status = 'IN_PROGRESS'
+				AND public_booking_idempotency_keys.created_at <= (
+					CURRENT_TIMESTAMP - make_interval(secs => CAST(:inProgressTtlSeconds AS integer))
+				)
 			""", nativeQuery = true)
-	int tryStart(Long companyId, Long branchId, String idempotencyKey, String requestHash);
+	int tryStart(
+			Long companyId,
+			Long branchId,
+			String idempotencyKey,
+			String requestHash,
+			String claimToken,
+			long inProgressTtlSeconds
+	);
 
 	Optional<PublicBookingIdempotencyJpaEntity> findByCompanyIdAndBranchIdAndIdempotencyKey(
 			Long companyId,
@@ -35,7 +52,8 @@ public interface PublicBookingIdempotencyJpaRepository
 			where record.companyId = :companyId
 				and record.branchId = :branchId
 				and record.idempotencyKey = :idempotencyKey
+				and record.claimToken = :claimToken
 				and record.status = 'IN_PROGRESS'
 			""")
-	int complete(Long companyId, Long branchId, String idempotencyKey, Long appointmentId);
+	int complete(Long companyId, Long branchId, String idempotencyKey, String claimToken, Long appointmentId);
 }

@@ -49,22 +49,22 @@ class PublicBookingIdempotencyMigrationTest {
 					""");
 			statement.executeUpdate("""
 					INSERT INTO public_booking_idempotency_keys (
-						company_id, branch_id, idempotency_key, request_hash, status
-					) VALUES (1, 1, 'shared-key-123', repeat('a', 64), 'IN_PROGRESS')
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (1, 1, 'shared-key-123', repeat('a', 64), 'claim-a', 'IN_PROGRESS')
 					""");
 
 			assertThatThrownBy(() -> statement.executeUpdate("""
 						INSERT INTO public_booking_idempotency_keys (
-							company_id, branch_id, idempotency_key, request_hash, status
-						) VALUES (1, 1, 'shared-key-123', repeat('a', 64), 'IN_PROGRESS')
+							company_id, branch_id, idempotency_key, request_hash, claim_token, status
+						) VALUES (1, 1, 'shared-key-123', repeat('a', 64), 'claim-b', 'IN_PROGRESS')
 						"""))
 					.isInstanceOf(SQLException.class)
 					.satisfies(exception -> assertThat(((SQLException) exception).getSQLState()).isEqualTo("23505"));
 
 			int inserted = statement.executeUpdate("""
 					INSERT INTO public_booking_idempotency_keys (
-						company_id, branch_id, idempotency_key, request_hash, status
-					) VALUES (1, 2, 'shared-key-123', repeat('a', 64), 'IN_PROGRESS')
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (1, 2, 'shared-key-123', repeat('a', 64), 'claim-c', 'IN_PROGRESS')
 					""");
 			assertThat(inserted).isEqualTo(1);
 		}
@@ -78,16 +78,16 @@ class PublicBookingIdempotencyMigrationTest {
 			connection.setAutoCommit(false);
 			statement.executeUpdate("""
 					INSERT INTO public_booking_idempotency_keys (
-						company_id, branch_id, idempotency_key, request_hash, status
-					) VALUES (1, 1, 'rollback-key-123', repeat('b', 64), 'IN_PROGRESS')
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (1, 1, 'rollback-key-123', repeat('b', 64), 'claim-rollback-a', 'IN_PROGRESS')
 					""");
 			connection.rollback();
 			connection.setAutoCommit(true);
 
 			int inserted = statement.executeUpdate("""
 					INSERT INTO public_booking_idempotency_keys (
-						company_id, branch_id, idempotency_key, request_hash, status
-					) VALUES (1, 1, 'rollback-key-123', repeat('b', 64), 'IN_PROGRESS')
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (1, 1, 'rollback-key-123', repeat('b', 64), 'claim-rollback-b', 'IN_PROGRESS')
 					""");
 			assertThat(inserted).isEqualTo(1);
 		}
@@ -130,9 +130,9 @@ class PublicBookingIdempotencyMigrationTest {
 			assertThatThrownBy(() -> statement.executeUpdate("""
 						INSERT INTO public_booking_idempotency_keys (
 							company_id, branch_id, idempotency_key, request_hash,
-							appointment_id, status, completed_at
+							claim_token, appointment_id, status, completed_at
 						) VALUES (
-							1, 1, 'cross-tenant-key', repeat('c', 64),
+							1, 1, 'cross-tenant-key', repeat('c', 64), 'claim-cross-tenant',
 							20, 'COMPLETED', now()
 						)
 						"""))
@@ -149,8 +149,8 @@ class PublicBookingIdempotencyMigrationTest {
 			firstConnection.setAutoCommit(false);
 			firstStatement.executeUpdate("""
 					INSERT INTO public_booking_idempotency_keys (
-						company_id, branch_id, idempotency_key, request_hash, status
-					) VALUES (1, 1, 'concurrent-key-123', repeat('d', 64), 'IN_PROGRESS')
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (1, 1, 'concurrent-key-123', repeat('d', 64), 'claim-concurrent-a', 'IN_PROGRESS')
 					ON CONFLICT (company_id, branch_id, idempotency_key) DO NOTHING
 					""");
 
@@ -160,8 +160,8 @@ class PublicBookingIdempotencyMigrationTest {
 				); var statement = connection.createStatement()) {
 					return statement.executeUpdate("""
 							INSERT INTO public_booking_idempotency_keys (
-								company_id, branch_id, idempotency_key, request_hash, status
-							) VALUES (1, 1, 'concurrent-key-123', repeat('d', 64), 'IN_PROGRESS')
+								company_id, branch_id, idempotency_key, request_hash, claim_token, status
+							) VALUES (1, 1, 'concurrent-key-123', repeat('d', 64), 'claim-concurrent-b', 'IN_PROGRESS')
 							ON CONFLICT (company_id, branch_id, idempotency_key) DO NOTHING
 							""");
 				} catch (SQLException exception) {
@@ -186,6 +186,113 @@ class PublicBookingIdempotencyMigrationTest {
 				rows.next();
 				assertThat(rows.getInt(1)).isEqualTo(1);
 			}
+		}
+	}
+
+	@Test
+	void staleInProgressClaimCanBeReclaimedButFreshOneCannot() throws Exception {
+		try (var connection = DriverManager.getConnection(
+				POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
+		); var statement = connection.createStatement()) {
+			statement.executeUpdate("""
+					INSERT INTO public_booking_idempotency_keys (
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status, created_at
+					) VALUES (
+						1, 1, 'stale-key-123', repeat('e', 64), 'claim-stale-a', 'IN_PROGRESS',
+						CURRENT_TIMESTAMP - INTERVAL '3 minutes'
+					)
+					""");
+			int reclaimed = statement.executeUpdate("""
+					INSERT INTO public_booking_idempotency_keys (
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (
+						1, 1, 'stale-key-123', repeat('f', 64), 'claim-stale-b', 'IN_PROGRESS'
+					)
+					ON CONFLICT (company_id, branch_id, idempotency_key) DO UPDATE
+					SET request_hash = EXCLUDED.request_hash,
+						claim_token = EXCLUDED.claim_token,
+						status = 'IN_PROGRESS',
+						appointment_id = NULL,
+						completed_at = NULL,
+						created_at = CURRENT_TIMESTAMP
+					WHERE public_booking_idempotency_keys.status = 'IN_PROGRESS'
+						AND public_booking_idempotency_keys.created_at <= (
+							CURRENT_TIMESTAMP - make_interval(secs => 120)
+						)
+					""");
+			assertThat(reclaimed).isEqualTo(1);
+
+			statement.executeUpdate("""
+					INSERT INTO public_booking_idempotency_keys (
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (1, 1, 'fresh-key-123', repeat('g', 64), 'claim-fresh-a', 'IN_PROGRESS')
+					""");
+			int blocked = statement.executeUpdate("""
+					INSERT INTO public_booking_idempotency_keys (
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (
+						1, 1, 'fresh-key-123', repeat('h', 64), 'claim-fresh-b', 'IN_PROGRESS'
+					)
+					ON CONFLICT (company_id, branch_id, idempotency_key) DO UPDATE
+					SET request_hash = EXCLUDED.request_hash,
+						claim_token = EXCLUDED.claim_token,
+						status = 'IN_PROGRESS',
+						appointment_id = NULL,
+						completed_at = NULL,
+						created_at = CURRENT_TIMESTAMP
+					WHERE public_booking_idempotency_keys.status = 'IN_PROGRESS'
+						AND public_booking_idempotency_keys.created_at <= (
+							CURRENT_TIMESTAMP - make_interval(secs => 120)
+						)
+					""");
+			assertThat(blocked).isZero();
+		}
+	}
+
+	@Test
+	void staleCompletionCannotHijackReclaimedClaim() throws Exception {
+		try (var connection = DriverManager.getConnection(
+				POSTGRES.getJdbcUrl(), POSTGRES.getUsername(), POSTGRES.getPassword()
+		); var statement = connection.createStatement()) {
+			statement.executeUpdate("""
+					INSERT INTO public_booking_idempotency_keys (
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status, created_at
+					) VALUES (
+						1, 1, 'fenced-key-123', repeat('i', 64), 'claim-old', 'IN_PROGRESS',
+						CURRENT_TIMESTAMP - INTERVAL '3 minutes'
+					)
+					""");
+			statement.executeUpdate("""
+					INSERT INTO public_booking_idempotency_keys (
+						company_id, branch_id, idempotency_key, request_hash, claim_token, status
+					) VALUES (
+						1, 1, 'fenced-key-123', repeat('i', 64), 'claim-new', 'IN_PROGRESS'
+					)
+					ON CONFLICT (company_id, branch_id, idempotency_key) DO UPDATE
+					SET request_hash = EXCLUDED.request_hash,
+						claim_token = EXCLUDED.claim_token,
+						status = 'IN_PROGRESS',
+						appointment_id = NULL,
+						completed_at = NULL,
+						created_at = CURRENT_TIMESTAMP
+					WHERE public_booking_idempotency_keys.status = 'IN_PROGRESS'
+						AND public_booking_idempotency_keys.created_at <= (
+							CURRENT_TIMESTAMP - make_interval(secs => 120)
+						)
+					""");
+
+			int staleCompletion = statement.executeUpdate("""
+					UPDATE public_booking_idempotency_keys
+					SET status = 'COMPLETED',
+						appointment_id = 1,
+						completed_at = CURRENT_TIMESTAMP
+					WHERE company_id = 1
+						AND branch_id = 1
+						AND idempotency_key = 'fenced-key-123'
+						AND claim_token = 'claim-old'
+						AND status = 'IN_PROGRESS'
+					""");
+			assertThat(staleCompletion).isZero();
 		}
 	}
 }

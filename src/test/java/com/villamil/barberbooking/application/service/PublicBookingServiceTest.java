@@ -169,7 +169,7 @@ class PublicBookingServiceTest {
 		assertThat(response.customer().phone()).isEqualTo("3001234567");
 		assertThat(response.customer().fullName()).isEqualTo("Carlos Villamil");
 		verify(customerRepositoryPort, never()).save(any());
-		verify(publicBookingIdempotencyPort).complete("booking-key-123", 10L);
+		verify(publicBookingIdempotencyPort).complete("booking-key-123", "claim-token-123", 10L);
 	}
 
 	@Test
@@ -205,7 +205,7 @@ class PublicBookingServiceTest {
 				.isInstanceOf(PublicResourceNotFoundException.class)
 				.hasMessage("Public service offering not found");
 		verify(publicBookingRateLimiter).check("127.0.0.1", 7L, 9L, "3001234567");
-		verify(publicBookingIdempotencyPort, never()).complete(any(), any());
+		verify(publicBookingIdempotencyPort, never()).complete(any(), any(), any());
 	}
 
 	@Test
@@ -223,7 +223,7 @@ class PublicBookingServiceTest {
 				.isInstanceOf(PublicResourceNotFoundException.class)
 				.hasMessage("Public barber not found");
 		verify(publicBookingRateLimiter).check("127.0.0.1", 7L, 9L, "3001234567");
-		verify(publicBookingIdempotencyPort, never()).complete(any(), any());
+		verify(publicBookingIdempotencyPort, never()).complete(any(), any(), any());
 	}
 
 	@Test
@@ -274,7 +274,7 @@ class PublicBookingServiceTest {
 		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
 				.thenReturn(Optional.of(PUBLIC_TENANT));
 		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("same-hash");
-		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn(false);
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn(null);
 		when(publicBookingIdempotencyPort.find("booking-key-123")).thenReturn(Optional.of(
 				new PublicBookingIdempotencyRecord(
 						"same-hash", 10L, PublicBookingIdempotencyRecord.Status.COMPLETED
@@ -300,7 +300,7 @@ class PublicBookingServiceTest {
 		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
 				.thenReturn(Optional.of(PUBLIC_TENANT));
 		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("new-hash");
-		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "new-hash")).thenReturn(false);
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "new-hash")).thenReturn(null);
 		when(publicBookingIdempotencyPort.find("booking-key-123")).thenReturn(Optional.of(
 				new PublicBookingIdempotencyRecord(
 						"old-hash", 10L, PublicBookingIdempotencyRecord.Status.COMPLETED
@@ -313,6 +313,46 @@ class PublicBookingServiceTest {
 		verify(appointmentRepositoryPort, never()).save(any());
 		verify(publicBarberShopRepositoryPort, never()).findVisibleServiceByCompanyId(any(), any());
 		verify(publicBarberShopRepositoryPort, never()).findVisibleBarberByTenant(any(), any(), any());
+	}
+
+	@Test
+	void inProgressIdempotencyKeyWithinTtlReturnsConflict() {
+		executeTenantActions();
+		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
+				.thenReturn(Optional.of(PUBLIC_TENANT));
+		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("same-hash");
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn(null);
+		when(publicBookingIdempotencyPort.find("booking-key-123")).thenReturn(Optional.of(
+				new PublicBookingIdempotencyRecord(
+						"same-hash", null, PublicBookingIdempotencyRecord.Status.IN_PROGRESS
+				)
+		));
+
+		assertThatThrownBy(() -> service.create(command()))
+				.isInstanceOf(IdempotencyConflictException.class)
+				.hasMessageContaining("still in progress");
+		verify(appointmentRepositoryPort, never()).save(any());
+	}
+
+	@Test
+	void expiredInProgressIdempotencyKeyCanBeReclaimed() {
+		Customer customer = customer(5L, "Carlos Villamil");
+		Appointment unsaved = appointment(null);
+		Appointment saved = appointment(10L);
+		executeTenantActions();
+		mockPublicResources();
+		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("same-hash");
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn("reclaimed-claim-token");
+		when(customerRepositoryPort.findByPhone("3001234567")).thenReturn(Optional.of(customer));
+		when(appointmentBookingPolicy.createValidatedAppointment(
+				5L, 2L, 1L, START_AT, AppointmentSource.ONLINE, AppointmentStatus.SCHEDULED))
+				.thenReturn(unsaved);
+		when(appointmentRepositoryPort.save(unsaved)).thenReturn(saved);
+
+		PublicAppointmentResponse response = service.create(command());
+
+		assertThat(response.id()).isEqualTo(10L);
+		verify(publicBookingIdempotencyPort).complete("booking-key-123", "reclaimed-claim-token", 10L);
 	}
 
 	private void executeTenantActions() {
@@ -331,7 +371,7 @@ class PublicBookingServiceTest {
 
 	private void mockNewIdempotentRequest() {
 		when(publicBookingRequestHasher.hash(any(), eq(7L), eq(9L))).thenReturn("same-hash");
-		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn(true);
+		when(publicBookingIdempotencyPort.tryStart("booking-key-123", "same-hash")).thenReturn("claim-token-123");
 	}
 
 	private CreatePublicAppointmentCommand command() {

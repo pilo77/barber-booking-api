@@ -3,7 +3,10 @@ package com.villamil.barberbooking.infrastructure.config;
 import java.io.IOException;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.Arrays;
+import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
@@ -21,6 +24,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.villamil.barberbooking.infrastructure.security.JwtAuthenticationFilter;
@@ -41,6 +47,7 @@ public class SecurityConfig {
 			ObjectMapper objectMapper
 	) throws Exception {
 		return http
+				.cors(cors -> { })
 				.csrf(AbstractHttpConfigurer::disable)
 				.httpBasic(AbstractHttpConfigurer::disable)
 				.formLogin(AbstractHttpConfigurer::disable)
@@ -95,6 +102,22 @@ public class SecurityConfig {
 	}
 
 	@Bean
+	CorsConfigurationSource corsConfigurationSource(
+			@Value("${app.cors.allowed-origins:http://localhost:4200}") String allowedOrigins
+	) {
+		CorsConfiguration configuration = new CorsConfiguration();
+		configuration.setAllowedOrigins(splitCommaSeparated(allowedOrigins));
+		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Bootstrap-Token"));
+		configuration.setExposedHeaders(List.of("Location"));
+		configuration.setAllowCredentials(false);
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
+
+	@Bean
 	UserDetailsService userDetailsService() {
 		return username -> {
 			throw new UsernameNotFoundException("UserDetailsService is not used for JWT authentication");
@@ -133,5 +156,12 @@ public class SecurityConfig {
 		response.setStatus(status.value());
 		response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
 		objectMapper.writeValue(response.getOutputStream(), problemDetail);
+	}
+
+	private List<String> splitCommaSeparated(String value) {
+		return Arrays.stream(value.split(","))
+				.map(String::trim)
+				.filter(origin -> !origin.isBlank())
+				.toList();
 	}
 }

@@ -6,9 +6,10 @@ on:
       - develop
       - main
   push:
-    branches:
-      - develop
-      - main
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -37,4 +38,7 @@ jobs:
         run: docker info
 
       - name: Run Maven verify
-        run: ./mvnw verify
+        run: ./mvnw -B verify
+
+      - name: Check whitespace errors
+        run: git diff --check

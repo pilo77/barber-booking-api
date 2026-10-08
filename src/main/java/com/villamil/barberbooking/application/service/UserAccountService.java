@@ -116,7 +116,7 @@ class UserAccountService implements
 		AuthenticatedUserResponse actor = currentUserResolver.requireCurrentUser();
 		UserAccount userAccount = userAccountRepositoryPort.findById(id)
 				.orElseThrow(() -> new UserAccountNotFoundException("User account not found"));
-		userAuthorizationPolicy.ensureCanAccessUser(actor, userAccount);
+		userAuthorizationPolicy.ensureCanChangeUserActivation(actor, userAccount);
 		return UserAccountResponse.from(userAccountRepositoryPort.save(userAccount.activate()));
 	}
 
@@ -126,7 +126,7 @@ class UserAccountService implements
 		AuthenticatedUserResponse actor = currentUserResolver.requireCurrentUser();
 		UserAccount userAccount = userAccountRepositoryPort.findById(id)
 				.orElseThrow(() -> new UserAccountNotFoundException("User account not found"));
-		userAuthorizationPolicy.ensureCanAccessUser(actor, userAccount);
+		userAuthorizationPolicy.ensureCanChangeUserActivation(actor, userAccount);
 		return UserAccountResponse.from(userAccountRepositoryPort.save(userAccount.deactivate()));
 	}
 

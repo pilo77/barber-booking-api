@@ -17,6 +17,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import com.villamil.barberbooking.domain.model.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -43,6 +46,7 @@ import com.villamil.barberbooking.application.port.in.ListPublicServicesUseCase;
 import com.villamil.barberbooking.application.port.in.UpdateCompanyPublicBrandingUseCase;
 import com.villamil.barberbooking.application.port.in.UpdateCustomerUseCase;
 import com.villamil.barberbooking.application.port.out.JwtTokenPort;
+import com.villamil.barberbooking.application.port.out.UserAccountRepositoryPort;
 import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
 import com.villamil.barberbooking.domain.valueobject.ThemeMode;
@@ -62,11 +66,38 @@ import com.villamil.barberbooking.infrastructure.tenant.ThreadLocalTenantContext
 })
 class SecurityConfigTest {
 
+	@ParameterizedTest
+	@EnumSource(Role.class)
+	void allNineRolesHaveExplicitCustomerPermissions(Role role) throws Exception {
+		boolean allowed = List.of(Role.COMPANY_OWNER, Role.BRANCH_MANAGER, Role.RECEPTIONIST).contains(role);
+		when(listCustomersUseCase.list()).thenReturn(List.of());
+		mockMvc.perform(get("/api/v1/customers").with(user("user@example.com").roles(role.name())))
+				.andExpect(allowed ? status().isOk() : status().isForbidden());
+	}
+
+	@ParameterizedTest
+	@EnumSource(Role.class)
+	void unknownApiRoutesAreDeniedForEveryRole(Role role) throws Exception {
+		mockMvc.perform(get("/api/v1/unimplemented-financial-module").with(user("user@example.com").roles(role.name())))
+				.andExpect(status().isForbidden());
+	}
+
+	@Test
+	void foreignOriginIsRejected() throws Exception {
+		mockMvc.perform(options("/api/v1/auth/login")
+				.header("Origin", "https://untrusted.example")
+				.header("Access-Control-Request-Method", "POST"))
+				.andExpect(status().isForbidden());
+	}
+
 	@Autowired
 	private MockMvc mockMvc;
 
 	@MockitoBean
 	private JwtTokenPort jwtTokenPort;
+
+	@MockitoBean
+	private UserAccountRepositoryPort userAccountRepositoryPort;
 
 	@MockitoBean
 	private CreateCustomerUseCase createCustomerUseCase;

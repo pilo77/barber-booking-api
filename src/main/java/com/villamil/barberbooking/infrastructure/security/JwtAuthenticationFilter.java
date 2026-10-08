@@ -10,6 +10,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.villamil.barberbooking.application.dto.response.AuthenticatedUserResponse;
 import com.villamil.barberbooking.application.port.out.JwtTokenPort;
+import com.villamil.barberbooking.application.port.out.UserAccountRepositoryPort;
+import com.villamil.barberbooking.domain.model.UserAccount;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,9 +25,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private static final String BEARER = "Bearer ";
 
 	private final JwtTokenPort jwtTokenPort;
+	private final UserAccountRepositoryPort userAccountRepositoryPort;
 
-	public JwtAuthenticationFilter(JwtTokenPort jwtTokenPort) {
+	public JwtAuthenticationFilter(JwtTokenPort jwtTokenPort, UserAccountRepositoryPort userAccountRepositoryPort) {
 		this.jwtTokenPort = jwtTokenPort;
+		this.userAccountRepositoryPort = userAccountRepositoryPort;
 	}
 
 	@Override
@@ -38,6 +42,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		if (authorization != null && authorization.startsWith(BEARER)) {
 			try {
 				AuthenticatedUserResponse user = jwtTokenPort.parse(authorization.substring(BEARER.length()));
+				UserAccount account = userAccountRepositoryPort.findById(user.id())
+						.filter(UserAccount::active)
+						.orElseThrow(() -> new IllegalArgumentException("Invalid session"));
+				if (!user.equals(AuthenticatedUserResponse.from(account))) {
+					throw new IllegalArgumentException("Session no longer matches account permissions");
+				}
 				AuthenticatedUserPrincipal principal = new AuthenticatedUserPrincipal(
 						user,
 						user.roles().stream()

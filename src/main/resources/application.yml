@@ -21,9 +21,14 @@ spring:
     time-zone: UTC
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${PORT:${SERVER_PORT:8080}}
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
 
 booking:
+  time-zone: ${BOOKING_TIME_ZONE:America/Bogota}
   slot-step-minutes: ${BOOKING_SLOT_STEP_MINUTES:15}
   public:
     idempotency:
@@ -38,8 +43,29 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET}
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:60}
+    issuer: ${APP_JWT_ISSUER:barberia-ghs}
+    audience: ${APP_JWT_AUDIENCE:barberia-ghs-web}
   bootstrap:
     token: ${APP_BOOTSTRAP_TOKEN:}
+  platform-owner-provisioning:
+    enabled: ${PLATFORM_OWNER_PROVISIONING_ENABLED:false}
+    email: ${PLATFORM_OWNER_EMAIL:}
+    full-name: ${PLATFORM_OWNER_NAME:}
+    password: ${PLATFORM_OWNER_INITIAL_PASSWORD:}
+
+billing:
+  manual:
+    instructions: ${BILLING_MANUAL_INSTRUCTIONS:}
+  basic:
+    amount-in-cents: ${BILLING_BASIC_AMOUNT_IN_CENTS:4000000}
+  wompi:
+    enabled: ${WOMPI_ENABLED:false}
+    environment: ${WOMPI_ENVIRONMENT:test}
+    public-key: ${WOMPI_PUBLIC_KEY:}
+    private-key: ${WOMPI_PRIVATE_KEY:}
+    integrity-secret: ${WOMPI_INTEGRITY_SECRET:}
+    events-secret: ${WOMPI_EVENTS_SECRET:}
+    redirect-url: ${WOMPI_REDIRECT_URL:}
 
 management:
   endpoints:

@@ -30,6 +30,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.villamil.barberbooking.infrastructure.security.JwtAuthenticationFilter;
+import com.villamil.barberbooking.infrastructure.security.SubscriptionAccessFilter;
+import org.springframework.beans.factory.ObjectProvider;
 import com.villamil.barberbooking.infrastructure.tenant.TemporaryTenantHeaderFilter;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,8 +46,16 @@ public class SecurityConfig {
 			HttpSecurity http,
 			JwtAuthenticationFilter jwtAuthenticationFilter,
 			TemporaryTenantHeaderFilter temporaryTenantHeaderFilter,
-			ObjectMapper objectMapper
+			ObjectMapper objectMapper,
+			ObjectProvider<com.villamil.barberbooking.infrastructure.security.AuthAbuseProtectionFilter> abuseProtection,
+			ObjectProvider<SubscriptionAccessFilter> subscriptionFilter
 	) throws Exception {
+		http.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+		var abuseFilter = abuseProtection.getIfAvailable();
+		if (abuseFilter != null) http.addFilterBefore(abuseFilter, JwtAuthenticationFilter.class);
+		http.addFilterAfter(temporaryTenantHeaderFilter, JwtAuthenticationFilter.class);
+		SubscriptionAccessFilter accessFilter = subscriptionFilter.getIfAvailable();
+		if (accessFilter != null) http.addFilterAfter(accessFilter, TemporaryTenantHeaderFilter.class);
 		return http
 				.cors(cors -> { })
 				.csrf(AbstractHttpConfigurer::disable)
@@ -57,13 +67,25 @@ public class SecurityConfig {
 						.requestMatchers(
 								"/api/v1/auth/login",
 								"/api/v1/auth/bootstrap",
+								"/api/v1/auth/register-company",
 								"/actuator/health",
-								"/actuator/health/**",
-								"/swagger-ui/**",
-								"/swagger-ui.html",
-								"/v3/api-docs/**"
+								"/actuator/health/**"
 						).permitAll()
-						.requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
+						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+								.hasAnyRole("PLATFORM_OWNER", "COMPANY_OWNER")
+						.requestMatchers(HttpMethod.GET,
+								"/api/v1/public/barber-shops/*",
+								"/api/v1/public/barber-shops/*/branches",
+								"/api/v1/public/barber-shops/*/branches/*",
+								"/api/v1/public/barber-shops/*/branches/*/services",
+								"/api/v1/public/barber-shops/*/branches/*/barbers",
+								"/api/v1/public/barber-shops/*/branches/*/barbers/*/availability").permitAll()
+						.requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/v1/webhooks/wompi").permitAll()
+						.requestMatchers("/api/v1/billing/**").hasRole("COMPANY_OWNER")
+						.requestMatchers("/api/v1/platform/billing/**").hasRole("PLATFORM_OWNER")
+						.requestMatchers(HttpMethod.GET, "/api/v1/company/context")
+								.hasAnyRole("COMPANY_OWNER", "BRANCH_MANAGER", "RECEPTIONIST", "BARBER")
 						.requestMatchers(
 								HttpMethod.POST,
 								"/api/v1/public/barber-shops/*/branches/*/appointments"
@@ -80,10 +102,11 @@ public class SecurityConfig {
 								.hasAnyRole("COMPANY_OWNER", "BRANCH_MANAGER", "RECEPTIONIST", "BARBER")
 						.requestMatchers("/api/v1/customers/**")
 								.hasAnyRole("COMPANY_OWNER", "BRANCH_MANAGER", "RECEPTIONIST")
+						.requestMatchers(HttpMethod.GET, "/api/v1/barbers", "/api/v1/services")
+								.hasAnyRole("COMPANY_OWNER", "BRANCH_MANAGER", "RECEPTIONIST")
 						.requestMatchers("/api/v1/barbers/**", "/api/v1/services/**")
 								.hasAnyRole("COMPANY_OWNER", "BRANCH_MANAGER")
-						.requestMatchers("/api/v1/**").authenticated()
-						.anyRequest().authenticated()
+						.anyRequest().denyAll()
 				)
 				.exceptionHandling(exceptions -> exceptions
 						.authenticationEntryPoint((request, response, exception) ->
@@ -91,9 +114,16 @@ public class SecurityConfig {
 						.accessDeniedHandler((request, response, exception) ->
 								writeProblem(response, objectMapper, request, HttpStatus.FORBIDDEN, "Forbidden", "Insufficient permissions"))
 				)
-				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-				.addFilterAfter(temporaryTenantHeaderFilter, JwtAuthenticationFilter.class)
 				.build();
+	}
+
+	@Bean
+	@org.springframework.boot.autoconfigure.condition.ConditionalOnBean(com.villamil.barberbooking.infrastructure.security.AuthAbuseProtectionFilter.class)
+	FilterRegistrationBean<com.villamil.barberbooking.infrastructure.security.AuthAbuseProtectionFilter> abuseFilterRegistration(
+			com.villamil.barberbooking.infrastructure.security.AuthAbuseProtectionFilter filter) {
+		var registration = new FilterRegistrationBean<>(filter);
+		registration.setEnabled(false);
+		return registration;
 	}
 
 	@Bean
@@ -106,6 +136,9 @@ public class SecurityConfig {
 			@Value("${app.cors.allowed-origins:http://localhost:4200}") String allowedOrigins
 	) {
 		CorsConfiguration configuration = new CorsConfiguration();
+		if (allowedOrigins.contains("*")) {
+			throw new IllegalStateException("CORS requires explicit origins; wildcard origins are not allowed");
+		}
 		configuration.setAllowedOrigins(splitCommaSeparated(allowedOrigins));
 		configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 		configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Idempotency-Key", "X-Bootstrap-Token"));

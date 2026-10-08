@@ -34,11 +34,13 @@ class LoginService implements LoginUseCase {
 	@Transactional(readOnly = true)
 	public LoginResponse login(LoginCommand command) {
 		UserAccount userAccount = userAccountRepositoryPort.findByEmail(normalizeEmail(command.email()))
-				.orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
-		if (!userAccount.active()) {
+				.orElse(null);
+		if (userAccount == null) {
+			passwordHasherPort.mitigateMissingAccount(command.password());
 			throw new AuthenticationFailedException("Invalid email or password");
 		}
-		if (!passwordHasherPort.matches(command.password(), userAccount.passwordHash())) {
+		boolean matches = passwordHasherPort.matches(command.password(), userAccount.passwordHash());
+		if (!matches || !userAccount.active()) {
 			throw new AuthenticationFailedException("Invalid email or password");
 		}
 		return new LoginResponse(

@@ -94,7 +94,8 @@ class PublicBookingServiceTest {
 				appointmentRepositoryPort,
 				publicBookingIdempotencyPort,
 				publicBookingRequestHasher,
-				publicBookingRateLimiter
+				publicBookingRateLimiter,
+				org.mockito.Mockito.mock(PublicSubscriptionPolicy.class)
 		);
 	}
 

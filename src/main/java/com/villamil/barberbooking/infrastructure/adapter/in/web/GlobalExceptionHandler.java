@@ -10,6 +10,9 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -35,6 +38,7 @@ import com.villamil.barberbooking.domain.exception.ServiceOfferingNotFoundExcept
 import com.villamil.barberbooking.domain.exception.UserAccountAlreadyExistsException;
 import com.villamil.barberbooking.domain.exception.UserAccountNotFoundException;
 import com.villamil.barberbooking.application.exception.IdempotencyConflictException;
+import com.villamil.barberbooking.application.exception.BillingUnavailableException;
 import com.villamil.barberbooking.application.exception.InvalidIdempotencyKeyException;
 import com.villamil.barberbooking.application.exception.MissingIdempotencyKeyException;
 import com.villamil.barberbooking.application.exception.PublicBookingRateLimitExceededException;
@@ -43,6 +47,31 @@ import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+	@ExceptionHandler(BillingUnavailableException.class)
+	public ResponseEntity<ProblemDetail> handlePaymentsUnavailable(HttpServletRequest request) {
+		return problem(HttpStatus.SERVICE_UNAVAILABLE, "Payments unavailable", "Payments are temporarily unavailable", request, null);
+	}
+
+	@ExceptionHandler(HttpMessageNotReadableException.class)
+	public ResponseEntity<ProblemDetail> handleUnreadableBody(HttpServletRequest request) {
+		return problem(HttpStatus.BAD_REQUEST, "Invalid request", "Request body is invalid", request, null);
+	}
+
+	@ExceptionHandler(NoResourceFoundException.class)
+	public ResponseEntity<ProblemDetail> handleMissingResource(HttpServletRequest request) {
+		return problem(HttpStatus.NOT_FOUND, "Not found", "Resource not found", request, null);
+	}
+
+	@ExceptionHandler(AccessDeniedException.class)
+	public ResponseEntity<ProblemDetail> handleAccessDenied(HttpServletRequest request) {
+		return problem(HttpStatus.FORBIDDEN, "Forbidden", "Insufficient permissions", request, null);
+	}
+
+	@ExceptionHandler(Exception.class)
+	public ResponseEntity<ProblemDetail> handleUnexpected(HttpServletRequest request) {
+		return problem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal server error", "Unable to process request", request, null);
+	}
 
 	@ExceptionHandler({MissingIdempotencyKeyException.class, InvalidIdempotencyKeyException.class})
 	public ResponseEntity<ProblemDetail> handleInvalidIdempotencyKey(RuntimeException exception, HttpServletRequest request) {
@@ -190,6 +219,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler({
 			MissingServletRequestParameterException.class,
+			org.springframework.web.bind.MissingRequestHeaderException.class,
 			MethodArgumentTypeMismatchException.class
 	})
 	public ResponseEntity<ProblemDetail> handleInvalidRequestParameter(Exception exception, HttpServletRequest request) {

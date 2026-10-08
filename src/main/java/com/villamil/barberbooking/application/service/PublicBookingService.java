@@ -44,6 +44,7 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 	private final PublicBookingIdempotencyPort publicBookingIdempotencyPort;
 	private final PublicBookingRequestHasher publicBookingRequestHasher;
 	private final PublicBookingRateLimiter publicBookingRateLimiter;
+	private final PublicSubscriptionPolicy subscriptionPolicy;
 
 	PublicBookingService(
 			PublicBarberShopRepositoryPort publicBarberShopRepositoryPort,
@@ -54,7 +55,8 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 			AppointmentRepositoryPort appointmentRepositoryPort,
 			PublicBookingIdempotencyPort publicBookingIdempotencyPort,
 			PublicBookingRequestHasher publicBookingRequestHasher,
-			PublicBookingRateLimiter publicBookingRateLimiter
+			PublicBookingRateLimiter publicBookingRateLimiter,
+			PublicSubscriptionPolicy subscriptionPolicy
 	) {
 		this.publicBarberShopRepositoryPort = publicBarberShopRepositoryPort;
 		this.tenantContextExecutor = tenantContextExecutor;
@@ -65,6 +67,7 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 		this.publicBookingIdempotencyPort = publicBookingIdempotencyPort;
 		this.publicBookingRequestHasher = publicBookingRequestHasher;
 		this.publicBookingRateLimiter = publicBookingRateLimiter;
+		this.subscriptionPolicy = subscriptionPolicy;
 	}
 
 	@Override
@@ -186,11 +189,13 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 	}
 
 	private PublicTenantContext resolveTenant(String companySlug, String branchSlug) {
-		return publicBarberShopRepositoryPort.findActiveTenantBySlugs(
+		PublicTenantContext tenant = publicBarberShopRepositoryPort.findActiveTenantBySlugs(
 				normalizeSlug(companySlug),
 				normalizeSlug(branchSlug)
 		)
 				.orElseThrow(() -> new PublicResourceNotFoundException("Public branch not found"));
+		subscriptionPolicy.requireActive(tenant.companyId());
+		return tenant;
 	}
 
 	private PublicServiceOfferingResponse requireVisibleService(PublicTenantContext tenant, Long serviceOfferingId) {

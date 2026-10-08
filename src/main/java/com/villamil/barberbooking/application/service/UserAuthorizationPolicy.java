@@ -86,6 +86,22 @@ class UserAuthorizationPolicy {
 		throw new ForbiddenOperationException("User account is outside current scope");
 	}
 
+	void ensureCanChangeUserActivation(AuthenticatedUserResponse actor, UserAccount target) {
+		ensureCanManageUsers(actor);
+		ensureCanAccessUser(actor, target);
+		if (actor.id().equals(target.id())) {
+			throw new ForbiddenOperationException("User cannot change its own activation state");
+		}
+		if (!actor.roles().contains(Role.PLATFORM_OWNER)
+				&& (target.roles().contains(Role.PLATFORM_OWNER) || target.roles().contains(Role.COMPANY_OWNER))) {
+			throw new ForbiddenOperationException("Owner accounts require platform administration");
+		}
+		if (actor.roles().contains(Role.BRANCH_MANAGER) && !actor.roles().contains(Role.COMPANY_OWNER)
+				&& target.roles().contains(Role.BRANCH_MANAGER)) {
+			throw new ForbiddenOperationException("Branch manager cannot manage another manager's activation");
+		}
+	}
+
 	private boolean hasAnyRole(AuthenticatedUserResponse actor, Role... roles) {
 		for (Role role : roles) {
 			if (actor.roles().contains(role)) {

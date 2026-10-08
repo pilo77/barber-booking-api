@@ -1,0 +1,40 @@
+spring:
+  config:
+    import: ""
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      data-source-properties:
+        sslfactory: org.postgresql.ssl.DefaultJavaSSLFactory
+      maximum-pool-size: 3
+      minimum-idle: 0
+      connection-timeout: 10000
+      idle-timeout: 60000
+      max-lifetime: 600000
+app:
+  jwt:
+    expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:15}
+  bootstrap:
+    token: ""
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:}
+billing:
+  enforce-subscription: true
+  wompi:
+    environment: prod
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+management:
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db

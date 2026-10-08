@@ -126,8 +126,10 @@ No se migró una base de producción existente ni se ejecutó una migración des
 | Móvil | Agenda revisada a 390×844, sin desbordamiento horizontal de la página; tabla desplazable dentro de su contenedor. |
 
 Evidencia visual local sin datos de clientes reales en `target/production-evidence/`:
-`superadmin-local.png`, `public-booking-local.png`, `agenda-mobile-local.png` y
-`render-repository-access.png` y `render-github-two-repos-approval.png`. Último log de
+`superadmin-local.png`, `public-booking-local.png`, `agenda-mobile-local.png`,
+`render-repository-access.png`, `render-github-two-repos-approval.png`,
+`render-static-created.png`, `render-spa-rewrite.png`, `render-security-headers.png` y
+`render-api-admin-handoff.png`. Último log de
 verificación local en `target/deployment-verify.log`; evidencia anterior en
 `target/production-verify.log` y logs
 ignorados del frontend. Estos artefactos son locales y no se versionan.
@@ -135,25 +137,37 @@ ignorados del frontend. Estos artefactos son locales y no se versionan.
 ## Estado cloud y bloqueos concretos
 
 Se confirmó sesión en Render y proyecto Neon Free `barberia-ghs`, PostgreSQL 16,
-Virginia. No se alteraron servicios ni bases de RematePOS. Render solo muestra el
-repositorio `RematePos/RematePos-Backend` como fuente existente. Se preparó la instalación
+Virginia. No se alteraron servicios ni bases de RematePOS. Inicialmente Render solo
+mostraba `RematePos/RematePos-Backend` como fuente existente. Se completó la instalación
 GitHub de Render con acceso limitado a `pilo77/barber-booking-api` y
-`pilo77/barberia-ghs-frontend`, sin confirmar el botón Install. El frontend es privado.
+`pilo77/barberia-ghs-frontend`. El usuario autorizó ambas conexiones, completó la
+revalidación de identidad de GitHub y Render muestra ambos repositorios como fuentes
+desplegables. El frontend es privado.
 Ambas ramas revisadas ya se publicaron con autorización y sus pipelines pasaron.
-No se ha creado un servicio cloud de GHS ni transmitido credenciales de Neon a Render.
+Se creó la Static Site `barberia-ghs`, ID `srv-db416pij9qps73fp580g`, con origen real
+`https://barberia-ghs.onrender.com`, rama frontend revisada y Node 24. Se canceló el
+primer build mientras falta la URL real del backend. Se guardaron rewrite SPA y cinco
+headers de seguridad; aún no se validó una publicación correcta del frontend.
+
+La API está preparada en el formulario Render del usuario: Docker, Virginia, Free
+($0/mes), rama backend revisada, autodeploy off y health `/actuator/health/readiness`.
+La conexión directa Neon se cargó, tras autorización, en campos secretos de Render,
+sin imprimirla ni guardarla en archivos; usa JDBC con `sslmode=verify-full` y
+credenciales separadas. La API todavía no está creada: el usuario debe completar
+sus datos de administrador, contraseña nueva, clave JWT y destino bancario, y enviar
+el formulario. No se presume que una plantilla o una URL asignada esté desplegada.
 
 Para completar la publicación faltan:
 
-1. Habilitar explícitamente los repositorios GHS en la instalación Render de GitHub.
-   Esta ampliación de acceso requiere confirmación en el momento de concederla, según
-   la política de control del navegador; la autorización general no reemplaza ese paso.
-2. Confirmar la transmisión de credenciales de Neon a las variables secretas del
-   nuevo servicio Render. La política del navegador requiere autorización específica
-   del dato y destino; no se mostrarán ni versionarán credenciales.
-3. Cargar esas credenciales y configurar el origen
-   frontend, instrucciones reales de cobro y aprovisionamiento del administrador.
-   No inferir correo del administrador ni titular bancario. La contraseña la ingresa
-   el usuario en el campo secreto, sin enviarla por chat.
+1. Completar `APP_JWT_SECRET` (Generate), `PLATFORM_OWNER_EMAIL`,
+   `PLATFORM_OWNER_NAME`, `PLATFORM_OWNER_INITIAL_PASSWORD` y
+   `BILLING_MANUAL_INSTRUCTIONS`, y enviar Deploy web service. La política del
+   navegador exige que el usuario introduzca y envíe sus credenciales nuevas.
+   No inferir correo ni titular bancario ni enviar contraseña por chat.
+2. Obtener la URL real asignada a la API, configurar `GHS_API_URL` en la Static Site
+   y ejecutar el build. No usar una URL inventada o local.
+3. Confirmar creación y login del administrador; desactivar aprovisionamiento y
+   eliminar la contraseña inicial de las variables después del primer arranque.
 4. Ejecutar despliegues, migraciones y pruebas de health/login/pago/reserva en sus URLs
    reales. Las plantillas YAML no constituyen evidencia de despliegue.
 5. Probar respaldo/restauración, recuperación de cuenta y requisitos operativos antes

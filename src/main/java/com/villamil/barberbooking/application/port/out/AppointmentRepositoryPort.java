@@ -13,6 +13,9 @@ public interface AppointmentRepositoryPort {
 
 	Optional<Appointment> findById(Long id);
 
+	/** Locks the current tenant's appointment until the enclosing transaction ends. */
+	Optional<Appointment> findByIdForUpdate(Long id);
+
 	boolean existsBlockingOverlap(Long barberId, LocalDateTime startAt, LocalDateTime endAt);
 
 	List<Appointment> findByBarberIdAndDate(Long barberId, LocalDate date);

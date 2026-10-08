@@ -35,7 +35,7 @@ class CancelAppointmentService implements CancelAppointmentUseCase {
 	@Override
 	@Transactional
 	public AppointmentResponse cancel(Long id) {
-		Appointment appointment = appointmentRepositoryPort.findById(id)
+		Appointment appointment = appointmentRepositoryPort.findByIdForUpdate(id)
 				.orElseThrow(() -> new AppointmentNotFoundException("Appointment not found"));
 		if (currentUserResolver != null) {
 			userAuthorizationPolicy.ensureCanOperateAppointment(currentUserResolver.requireCurrentUser(), appointment);

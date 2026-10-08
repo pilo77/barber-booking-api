@@ -235,7 +235,7 @@ class AppointmentServiceTest {
 		CancelAppointmentService service = new CancelAppointmentService(appointmentRepositoryPort);
 		Appointment scheduled = appointment(AppointmentStatus.SCHEDULED);
 
-		when(appointmentRepositoryPort.findById(1L)).thenReturn(Optional.of(scheduled));
+		when(appointmentRepositoryPort.findByIdForUpdate(1L)).thenReturn(Optional.of(scheduled));
 		when(appointmentRepositoryPort.save(any(Appointment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -249,7 +249,7 @@ class AppointmentServiceTest {
 	void failWhenCancelAppointmentDoesNotExist() {
 		CancelAppointmentService service = new CancelAppointmentService(appointmentRepositoryPort);
 
-		when(appointmentRepositoryPort.findById(99L)).thenReturn(Optional.empty());
+		when(appointmentRepositoryPort.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.cancel(99L))
 				.isInstanceOf(AppointmentNotFoundException.class)
@@ -260,7 +260,7 @@ class AppointmentServiceTest {
 	void failWhenCancelCompletedAppointment() {
 		CancelAppointmentService service = new CancelAppointmentService(appointmentRepositoryPort);
 
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.COMPLETED)));
 
 		assertThatThrownBy(() -> service.cancel(1L))

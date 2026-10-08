@@ -43,26 +43,6 @@ class GetBarberDailyDashboardService implements GetBarberDailyDashboardUseCase {
 	private final UserAuthorizationPolicy userAuthorizationPolicy;
 	private final Clock clock;
 
-	@Autowired
-	GetBarberDailyDashboardService(
-			BarberRepositoryPort barberRepositoryPort,
-			AppointmentRepositoryPort appointmentRepositoryPort,
-			CustomerRepositoryPort customerRepositoryPort,
-			ServiceOfferingRepositoryPort serviceOfferingRepositoryPort,
-			CurrentUserResolver currentUserResolver,
-			UserAuthorizationPolicy userAuthorizationPolicy
-	) {
-		this(
-				barberRepositoryPort,
-				appointmentRepositoryPort,
-				customerRepositoryPort,
-				serviceOfferingRepositoryPort,
-				currentUserResolver,
-				userAuthorizationPolicy,
-				Clock.systemDefaultZone()
-		);
-	}
-
 	GetBarberDailyDashboardService(
 			BarberRepositoryPort barberRepositoryPort,
 			AppointmentRepositoryPort appointmentRepositoryPort,
@@ -81,6 +61,7 @@ class GetBarberDailyDashboardService implements GetBarberDailyDashboardUseCase {
 		);
 	}
 
+	@Autowired
 	GetBarberDailyDashboardService(
 			BarberRepositoryPort barberRepositoryPort,
 			AppointmentRepositoryPort appointmentRepositoryPort,

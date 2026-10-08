@@ -57,6 +57,17 @@ public class AppointmentPersistenceAdapter implements AppointmentRepositoryPort 
 	}
 
 	@Override
+	public Optional<Appointment> findByIdForUpdate(Long id) {
+		TenantContext tenantContext = tenantContextProvider.currentTenant();
+		return appointmentJpaRepository.findByIdAndTenantForUpdate(
+				id,
+				tenantContext.companyId(),
+				tenantContext.branchId()
+		)
+				.map(appointmentPersistenceMapper::toDomain);
+	}
+
+	@Override
 	public boolean existsBlockingOverlap(Long barberId, LocalDateTime startAt, LocalDateTime endAt) {
 		TenantContext tenantContext = tenantContextProvider.currentTenant();
 		return appointmentJpaRepository.existsBlockingOverlap(

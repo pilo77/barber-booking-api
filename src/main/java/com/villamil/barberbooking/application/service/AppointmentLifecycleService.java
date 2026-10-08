@@ -58,7 +58,7 @@ class AppointmentLifecycleService implements
 	}
 
 	private AppointmentResponse changeStatus(Long id, Function<Appointment, Appointment> transition) {
-		Appointment appointment = appointmentRepositoryPort.findById(id)
+		Appointment appointment = appointmentRepositoryPort.findByIdForUpdate(id)
 				.orElseThrow(() -> new AppointmentNotFoundException("Appointment not found"));
 		if (currentUserResolver != null) {
 			userAuthorizationPolicy.ensureCanOperateAppointment(currentUserResolver.requireCurrentUser(), appointment);

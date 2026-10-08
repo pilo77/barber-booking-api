@@ -45,7 +45,7 @@ class AppointmentLifecycleServiceTest {
 	void startScheduledAppointment() {
 		AppointmentLifecycleService service = service();
 
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.SCHEDULED)));
 		when(appointmentRepositoryPort.save(any(Appointment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
@@ -60,7 +60,7 @@ class AppointmentLifecycleServiceTest {
 	void failWhenStartCancelledAppointment() {
 		AppointmentLifecycleService service = service();
 
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.CANCELLED)));
 
 		assertThatThrownBy(() -> service.start(1L))
@@ -73,7 +73,7 @@ class AppointmentLifecycleServiceTest {
 	void completeInProgressAppointment() {
 		AppointmentLifecycleService service = service();
 
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.IN_PROGRESS)));
 		when(appointmentRepositoryPort.save(any(Appointment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
@@ -88,7 +88,7 @@ class AppointmentLifecycleServiceTest {
 	void failWhenCompleteScheduledAppointment() {
 		AppointmentLifecycleService service = service();
 
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.SCHEDULED)));
 
 		assertThatThrownBy(() -> service.complete(1L))
@@ -101,7 +101,7 @@ class AppointmentLifecycleServiceTest {
 	void markScheduledAppointmentAsNoShow() {
 		AppointmentLifecycleService service = service();
 
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.SCHEDULED)));
 		when(appointmentRepositoryPort.save(any(Appointment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
@@ -116,7 +116,7 @@ class AppointmentLifecycleServiceTest {
 	void failWhenMarkCompletedAppointmentAsNoShow() {
 		AppointmentLifecycleService service = service();
 
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.COMPLETED)));
 
 		assertThatThrownBy(() -> service.markNoShow(1L))
@@ -129,7 +129,7 @@ class AppointmentLifecycleServiceTest {
 	void failWhenAppointmentDoesNotExist() {
 		AppointmentLifecycleService service = service();
 
-		when(appointmentRepositoryPort.findById(99L)).thenReturn(Optional.empty());
+		when(appointmentRepositoryPort.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> service.start(99L))
 				.isInstanceOf(AppointmentNotFoundException.class)
@@ -139,7 +139,7 @@ class AppointmentLifecycleServiceTest {
 	@Test
 	void barberCanStartOwnAppointment() {
 		AppointmentLifecycleService service = securedService(barberUser(2L));
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.SCHEDULED)));
 		when(appointmentRepositoryPort.save(any(Appointment.class)))
 				.thenAnswer(invocation -> invocation.getArgument(0));
@@ -152,7 +152,7 @@ class AppointmentLifecycleServiceTest {
 	@Test
 	void barberCannotStartAnotherBarberAppointment() {
 		AppointmentLifecycleService service = securedService(barberUser(9L));
-		when(appointmentRepositoryPort.findById(1L))
+		when(appointmentRepositoryPort.findByIdForUpdate(1L))
 				.thenReturn(Optional.of(appointment(AppointmentStatus.SCHEDULED)));
 
 		assertThatThrownBy(() -> service.start(1L))

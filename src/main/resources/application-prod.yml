@@ -13,6 +13,9 @@ spring:
       connection-timeout: 10000
       idle-timeout: 60000
       max-lifetime: 600000
+server:
+  # Tomcat keeps its restricted internal-proxy defaults; never configure trust-all.
+  forward-headers-strategy: native
 app:
   jwt:
     expiration-minutes: ${APP_JWT_EXPIRATION_MINUTES:15}

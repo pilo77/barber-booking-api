@@ -191,6 +191,19 @@ La seguridad actual no incluye recuperación de contraseña, verificación de co
 MFA. El límite de abuso por instancia no es distribuido. Estas exclusiones y las cuotas
 de alojamiento deben comunicarse; no describir el producto como 100% seguro o ilimitado.
 
+El perfil `prod` usa `server.forward-headers-strategy: native`, con la válvula de Tomcat
+y sus restricciones predeterminadas no vacías para proxies internos; no configurar
+`internal-proxies` vacío, `trusted-proxies` universal ni estrategia `framework`.
+La válvula ignora cabeceras de un peer no confiable y recorre `X-Forwarded-For` desde
+la derecha hasta el primer salto no confiable, conservando la separación entre clientes
+cuando los saltos intermedios son internos. La cadena efectiva de Render puede incluir
+otros proxies: antes de anunciar el límite por IP validado en nube, comprobar con tráfico
+controlado de clientes diferentes que la dirección resuelta corresponde al cliente y que
+un prefijo falsificado no la altera. No ampliar confianza a rangos públicos sin evidencia
+del proveedor ni registrar direcciones o cabeceras completas de usuarios reales.
+Fuentes: [Spring Boot 3.5 sobre proxies](https://docs.spring.io/spring-boot/3.5/how-to/webserver.html)
+y [Render sobre IP del cliente](https://render.com/articles/how-render-handles-ddos-attacks).
+
 Un rollback del código solo se autoriza si es compatible con el esquema ya migrado.
 No revertir la base mediante SQL destructivo ni resetear Flyway. Ante falla, identificar
 servicio/commit y error sanitizado, corregir la causa, repetir health y flujo crítico.

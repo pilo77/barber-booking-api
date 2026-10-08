@@ -111,7 +111,7 @@ No se migró una base de producción existente ni se ejecutó una migración des
 | Validación | Resultado |
 | --- | --- |
 | `mvnw.cmd verify` local | BUILD SUCCESS; 408 reportadas, 398 ejecutadas, 10 omitidas; cero fallos/errores. Incluye las pruebas nuevas de capacidad/concurrencia del limitador y de proxy. |
-| PostgreSQL real | 26 casos adicionales contra PostgreSQL 18.2 local: seguridad (14), suscripción (4), revisión manual (3), administrador (3), ciclo de citas (2). |
+| PostgreSQL real | 26 casos de la suite contra PostgreSQL 18.2 local: seguridad (14), suscripción (4), revisión manual (3), administrador (3), ciclo de citas (2). Están incluidos en las 408 pruebas reportadas. |
 | Docker/Testcontainers | Motor Docker no disponible localmente; 10 casos omitidos localmente. La CI remota con Docker/PostgreSQL 16 ejecutó la suite completa: 408 pruebas, cero fallos/errores y cero omitidas. |
 | CI backend | [Run 37837500234](https://github.com/pilo77/barber-booking-api/actions/runs/37837500234), commit funcional `4da87ab`: Maven verify y build correctos. |
 | CI frontend | [Run 37835566293](https://github.com/pilo77/barberia-ghs-frontend/actions/runs/37835566293), commit `2dbc408`: pruebas, auditoría y builds correctos. |
@@ -146,8 +146,8 @@ desplegables. El frontend es privado.
 Ambas ramas revisadas ya se publicaron con autorización y sus pipelines pasaron.
 Se creó la Static Site `barberia-ghs`, ID `srv-db416pij9qps73fp580g`, con origen real
 `https://barberia-ghs.onrender.com`, rama frontend revisada y Node 24. Se canceló el
-primer build mientras falta la URL real del backend. Se guardaron rewrite SPA y cinco
-headers de seguridad; aún no se validó una publicación correcta del frontend.
+primer build mientras falta la URL real del backend. Se guardaron rewrite SPA, cuatro
+headers de seguridad y un header de caché; aún no se validó una publicación correcta del frontend.
 
 La API está preparada en el formulario Render del usuario: Docker, Virginia, Free
 ($0/mes), rama backend revisada, autodeploy off y health `/actuator/health/readiness`.

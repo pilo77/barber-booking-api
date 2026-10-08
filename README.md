@@ -5,7 +5,17 @@ PostgreSQL, Flyway, Testcontainers y arquitectura hexagonal.
 
 ## Estado actual
 
-Foundation inicial del proyecto:
+Preparación de SaaS revisada localmente: registro de barbería, plan de $40.000 COP
+mensuales, transferencia con aprobación exclusiva del administrador de plataforma,
+control de acceso por suscripción y endurecimiento de seguridad. El despliegue real
+todavía está pendiente; consultar evidencia y limitaciones antes de publicar:
+
+- [Informe de validación y pendientes de producción](docs/production-readiness-report.md).
+- [Flujo de suscripción y diseño de pagos](docs/production-billing-design.md).
+- [Procedimiento de despliegue gratuito y administrador](docs/cloud-deployment-runbook.md).
+- [Estudio del precio de lanzamiento](docs/pricing-study-2026-10-08.md).
+
+Funcionalidades de la API:
 
 - Proyecto Spring Boot con Maven Wrapper.
  - Configuración por variables de entorno.

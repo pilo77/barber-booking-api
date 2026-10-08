@@ -81,7 +81,8 @@ y WOMPI están separados para impedir que un webhook apruebe una orden manual.
 | JWT | Emisor/audiencia, expiración y revalidación de cuenta/roles/tenant. Desactivar una cuenta invalida un token ya emitido. |
 | Contraseñas | Nuevas cuentas requieren al menos 12 caracteres y máximo 72 bytes UTF-8 para BCrypt; comparación dummy en usuario inexistente. |
 | Acceso | Administrativos sin JWT: 401; rol no permitido: 403; plan pendiente: 402 en operación. Denegación por defecto de módulos desconocidos. |
-| Abuso | Límite acotado de intentos de login/alta por instancia; no es un limitador distribuido. |
+| Abuso | Límite acotado de intentos de login/alta y reserva pública por instancia. Reserva pública mantiene como máximo 10.000 claves, elimina ventanas vencidas y rechaza claves nuevas si la capacidad activa está completa. No es un limitador distribuido. |
+| Proxy | Tomcat ignora cabeceras de peers no confiables y resuelve clientes distintos detrás de proxies internos. Cuatro pruebas de la válvula real pasaron; la cadena de Render todavía requiere validación cloud. |
 | Producción | CORS HTTPS explícito, TLS PostgreSQL `verify-full`, validación del certificado/nombre, bootstrap público cerrado, Swagger deshabilitado y health sin detalles. |
 | Navegador | Sesión en `sessionStorage`; no se envía JWT a otros orígenes ni reservas públicas; respuestas tardías no restauran o cierran otra sesión. |
 
@@ -109,39 +110,47 @@ No se migró una base de producción existente ni se ejecutó una migración des
 
 | Validación | Resultado |
 | --- | --- |
-| `mvnw.cmd verify` | BUILD SUCCESS; 400 reportadas, 390 ejecutadas, 10 omitidas; cero fallos/errores. |
+| `mvnw.cmd verify` local | BUILD SUCCESS; 408 reportadas, 398 ejecutadas, 10 omitidas; cero fallos/errores. Incluye las pruebas nuevas de capacidad/concurrencia del limitador y de proxy. |
 | PostgreSQL real | 26 casos adicionales contra PostgreSQL 18.2 local: seguridad (14), suscripción (4), revisión manual (3), administrador (3), ciclo de citas (2). |
-| Docker/Testcontainers | Motor Docker no disponible localmente; 10 casos omitidos. CI con Docker/PostgreSQL 16 todavía no ejecutada remotamente. |
+| Docker/Testcontainers | Motor Docker no disponible localmente; 10 casos omitidos localmente. La CI remota con Docker/PostgreSQL 16 ejecutó la suite completa: 408 pruebas, cero fallos/errores y cero omitidas. |
+| CI backend | [Run 37837500234](https://github.com/pilo77/barber-booking-api/actions/runs/37837500234), commit funcional `4da87ab`: Maven verify y build correctos. |
+| CI frontend | [Run 37835566293](https://github.com/pilo77/barberia-ghs-frontend/actions/runs/37835566293), commit `2dbc408`: pruebas, auditoría y builds correctos. |
 | `npm test -- --watch=false` | 21 pruebas aprobadas en 5 archivos. Contrato `available` de disponibilidad real incluido. |
 | `npm run build` | Correcto en Angular con configuración normal. |
 | `npm run build:cloud` | Correcto con URL `.invalid` solo para compilación; no prueba conexión cloud. |
 | `npm audit --audit-level=high` | Cero vulnerabilidades reportadas por npm en esta ejecución. No sustituye auditoría completa. |
 | `git diff --check` | Correcto en ambos repositorios; avisos de normalización CRLF/LF sin errores de whitespace. |
 | Lint | No existe un script lint configurado; compilación TypeScript y pruebas sí ejecutadas. |
-| Arranque y HTTP | Backend y frontend levantados en QA local; readiness `UP`, registro 201, login real y suscripción con tarifa 4.000.000 centavos. |
+| Arranque y HTTP | Comprobados en QA local: readiness `UP`, registro 201, login real y suscripción con tarifa 4.000.000 centavos. La API se detuvo para empaquetar la última verificación; su reinicio fue rechazado por revisión automática de permisos y permanece detenida. |
 | Navegador | Superadministrador ficticio aprueba reporte ficticio; propietario entra; reserva pública confirmada con id 1. La API cambia SCHEDULED → IN_PROGRESS → COMPLETED y una lectura posterior confirma persistencia. |
 | Móvil | Agenda revisada a 390×844, sin desbordamiento horizontal de la página; tabla desplazable dentro de su contenedor. |
 
 Evidencia visual local sin datos de clientes reales en `target/production-evidence/`:
 `superadmin-local.png`, `public-booking-local.png`, `agenda-mobile-local.png` y
-`render-repository-access.png`. Logs de pruebas en `target/production-verify.log` y logs
+`render-repository-access.png` y `render-github-two-repos-approval.png`. Último log de
+verificación local en `target/deployment-verify.log`; evidencia anterior en
+`target/production-verify.log` y logs
 ignorados del frontend. Estos artefactos son locales y no se versionan.
 
 ## Estado cloud y bloqueos concretos
 
 Se confirmó sesión en Render y proyecto Neon Free `barberia-ghs`, PostgreSQL 16,
 Virginia. No se alteraron servicios ni bases de RematePOS. Render solo muestra el
-repositorio `RematePos/RematePos-Backend`; su credencial GitHub `pilo77` tiene acceso a
-un repositorio. El frontend de GHS es privado y no aparece como fuente desplegable.
+repositorio `RematePos/RematePos-Backend` como fuente existente. Se preparó la instalación
+GitHub de Render con acceso limitado a `pilo77/barber-booking-api` y
+`pilo77/barberia-ghs-frontend`, sin confirmar el botón Install. El frontend es privado.
+Ambas ramas revisadas ya se publicaron con autorización y sus pipelines pasaron.
+No se ha creado un servicio cloud de GHS ni transmitido credenciales de Neon a Render.
 
 Para completar la publicación faltan:
 
 1. Habilitar explícitamente los repositorios GHS en la instalación Render de GitHub.
    Esta ampliación de acceso requiere confirmación en el momento de concederla, según
    la política de control del navegador; la autorización general no reemplaza ese paso.
-2. Publicar las ramas revisadas con autorización explícita de push conforme a AGENTS.md
-   y comprobar la CI remota, incluidos los casos Testcontainers pendientes.
-3. Cargar credenciales Neon en campos secretos del servicio y configurar el origen
+2. Confirmar la transmisión de credenciales de Neon a las variables secretas del
+   nuevo servicio Render. La política del navegador requiere autorización específica
+   del dato y destino; no se mostrarán ni versionarán credenciales.
+3. Cargar esas credenciales y configurar el origen
    frontend, instrucciones reales de cobro y aprovisionamiento del administrador.
    No inferir correo del administrador ni titular bancario. La contraseña la ingresa
    el usuario en el campo secreto, sin enviarla por chat.
@@ -160,8 +169,10 @@ propio requiere renovaciones. El procedimiento y fuentes de límites constan en
 Trabajo aislado en `feature/production-readiness-billing` y
 `feature/production-readiness-ui`. Se conserva el commit frontend previo `e848ca5`.
 No se hizo merge, force push, eliminación de ramas ni modificación de una rama protegida.
-El inventario de commits locales finales se obtiene con `git log --oneline -n 6`;
-el estado de ambas ramas debe acompañar la entrega.
+Se publicaron ambas ramas y se comprobó su CI. Los commits funcionales comprobados son
+`4da87ab` (backend) y `2dbc408` (frontend). Esta actualización documental no modifica
+el comportamiento de la aplicación; el inventario final se obtiene con
+`git log --oneline -n 6` y el estado de ambas ramas debe acompañar la entrega.
 
 **Recomendación:** revisión del cambio y piloto controlado después de resolver los
 bloqueos. No mergear ni anunciar esta entrega como producción completa todavía.

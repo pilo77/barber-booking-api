@@ -187,8 +187,10 @@ tratamiento de datos, términos de pago y un procedimiento probado de respaldo/r
 - Recomendación: revisión comercial y piloto controlado cuando se cierre la
   validación productiva. No mergear como entrega de producción completa todavía.
 
-La revisión posterior amplió la validación a 400 pruebas backend reportadas (390
-ejecutadas, 10 omitidas), 26 casos con PostgreSQL real y 21 pruebas frontend.
+La revisión posterior amplió la validación a 408 pruebas backend reportadas localmente
+(398 ejecutadas, 10 omitidas), 26 casos con PostgreSQL real y 21 pruebas frontend.
+Las ramas se publicaron y la CI remota ejecutó las 408 pruebas backend sin omisiones,
+con Docker/PostgreSQL 16, además de completar la validación del frontend.
 El flujo manual y la reserva pública se comprobaron en navegador con datos ficticios.
 El estado final y los bloqueos de nube constan en
 [el informe de preparación](production-readiness-report.md); los resultados iniciales

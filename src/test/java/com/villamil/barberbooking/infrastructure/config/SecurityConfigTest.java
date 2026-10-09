@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,6 +33,8 @@ import com.villamil.barberbooking.application.dto.response.PublicAppointmentResp
 import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
 import com.villamil.barberbooking.application.dto.response.CompanyPublicBrandingResponse;
 import com.villamil.barberbooking.application.port.in.CreateCustomerUseCase;
+import com.villamil.barberbooking.application.service.CapabilityService;
+import com.villamil.barberbooking.application.port.in.MarketplaceUseCase;
 import com.villamil.barberbooking.application.port.in.GetCurrentCompanyPublicBrandingUseCase;
 import com.villamil.barberbooking.application.port.in.CreatePublicAppointmentUseCase;
 import com.villamil.barberbooking.application.port.in.DeactivateCustomerUseCase;
@@ -51,20 +54,59 @@ import com.villamil.barberbooking.domain.valueobject.AppointmentSource;
 import com.villamil.barberbooking.domain.valueobject.AppointmentStatus;
 import com.villamil.barberbooking.domain.valueobject.ThemeMode;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.CompanyPublicBrandingController;
+import com.villamil.barberbooking.infrastructure.adapter.in.web.CompanyCapabilitiesController;
+import com.villamil.barberbooking.infrastructure.adapter.in.web.MarketplaceController;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.CustomerController;
 import com.villamil.barberbooking.infrastructure.adapter.in.web.PublicBarberShopController;
 import com.villamil.barberbooking.infrastructure.security.JwtAuthenticationFilter;
 import com.villamil.barberbooking.infrastructure.tenant.TemporaryTenantHeaderFilter;
 import com.villamil.barberbooking.infrastructure.tenant.ThreadLocalTenantContextProvider;
 
-@WebMvcTest({CustomerController.class, PublicBarberShopController.class, CompanyPublicBrandingController.class})
+@WebMvcTest({CustomerController.class, PublicBarberShopController.class, CompanyPublicBrandingController.class,
+		CompanyCapabilitiesController.class, MarketplaceController.class})
 @Import({
 		SecurityConfig.class,
+		SubscriptionFilterConfig.class,
 		JwtAuthenticationFilter.class,
 		TemporaryTenantHeaderFilter.class,
 		ThreadLocalTenantContextProvider.class
 })
 class SecurityConfigTest {
+
+	@MockitoBean
+	private CapabilityService capabilityService;
+
+	@MockitoBean
+	private MarketplaceUseCase marketplaceUseCase;
+
+	@ParameterizedTest
+	@EnumSource(Role.class)
+	void marketplaceManagementHasExplicitRolePermissions(Role role) throws Exception {
+		mockMvc.perform(get("/api/v1/company/marketplace-profile").with(user("actor").roles(role.name())))
+				.andExpect(role == Role.COMPANY_OWNER ? status().isOk() : status().isForbidden());
+		mockMvc.perform(get("/api/v1/platform/marketplace/submissions").with(user("actor").roles(role.name())))
+				.andExpect(role == Role.PLATFORM_OWNER ? status().isOk() : status().isForbidden());
+		mockMvc.perform(patch("/api/v1/platform/marketplace/submissions/1/approve")
+				.with(user("actor").roles(role.name())).contentType("application/json")
+				.content("{\"expectedUpdatedAt\":\"2026-10-08T15:00:00Z\"}"))
+				.andExpect(role == Role.PLATFORM_OWNER ? status().isNoContent() : status().isForbidden());
+	}
+
+	@ParameterizedTest
+	@EnumSource(Role.class)
+	void companyCapabilitiesAreLimitedToOperationalRoles(Role role) throws Exception {
+		boolean allowed = List.of(Role.COMPANY_OWNER, Role.BRANCH_MANAGER, Role.RECEPTIONIST, Role.BARBER).contains(role);
+		mockMvc.perform(get("/api/v1/company/capabilities").with(user("actor").roles(role.name())))
+				.andExpect(allowed ? status().isOk() : status().isForbidden());
+	}
+
+	@Test
+	void publicDirectoryIsAnonymousButManagementRequiresAuthentication() throws Exception {
+		mockMvc.perform(get("/api/v1/public/marketplace")).andExpect(status().isOk());
+		mockMvc.perform(get("/api/v1/company/marketplace-profile")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/v1/company/capabilities")).andExpect(status().isUnauthorized());
+		mockMvc.perform(get("/api/v1/platform/marketplace/submissions")).andExpect(status().isUnauthorized());
+	}
 
 	@ParameterizedTest
 	@EnumSource(Role.class)

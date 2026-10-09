@@ -20,6 +20,7 @@ public class CompanyRegistrationAdapter implements CompanyRegistrationPort {
                 """, Long.class, company, branch, email, passwordHash, ownerName);
         jdbc.update("INSERT INTO user_account_roles(user_account_id, role) VALUES (?, 'COMPANY_OWNER')", user);
         jdbc.update("INSERT INTO company_subscriptions(company_id) VALUES (?)", company);
+        jdbc.update("INSERT INTO marketplace_branch_profiles(company_id, branch_id) VALUES (?, ?)", company, branch);
         return new CompanyContextResponse(name, slug, branchName, "principal");
     }
     @Override public CompanyContextResponse context(Long companyId, Long branchId) {

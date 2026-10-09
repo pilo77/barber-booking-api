@@ -82,12 +82,37 @@ class NativePostgresSecurityFlowTest {
         mvc.perform(post("/api/v1/auth/login").contentType("application/json")
           .content(json.writeValueAsString(java.util.Map.of("email",email,"password","incorrect")))).andExpect(status().isUnauthorized());
     }
-    @Test void pendingPlanBlocksOperationsButKeepsBillingAndLoginAccessible() throws Exception {
+    @Test void freePlanKeepsEssentialsAndBillingButRequiresBusinessForTeamAccounts() throws Exception {
         jdbc.update("UPDATE company_subscriptions SET valid_until=NULL WHERE company_id=?",company);
         String bearer="Bearer "+token(Role.COMPANY_OWNER);
-        mvc.perform(get("/api/v1/customers").header("Authorization",bearer)).andExpect(status().isPaymentRequired());
+        mvc.perform(get("/api/v1/customers").header("Authorization",bearer)).andExpect(status().isOk());
+        mvc.perform(get("/api/v1/user-accounts").header("Authorization",bearer)).andExpect(status().isPaymentRequired());
+        mvc.perform(get("/api/v1/company/capabilities").header("Authorization",bearer))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.tier").value("FREE"))
+            .andExpect(jsonPath("$.basicBooking").value(true)).andExpect(jsonPath("$.teamManagement").value(false));
         mvc.perform(get("/api/v1/auth/me").header("Authorization",bearer)).andExpect(status().isOk());
         mvc.perform(get("/api/v1/billing/subscription").header("Authorization",bearer)).andExpect(status().isOk());
+    }
+    @Test void suspendedCompanyAndBranchBlockOperationsWithExplicitCode() throws Exception {
+        String bearer="Bearer "+token(Role.COMPANY_OWNER);
+        jdbc.update("UPDATE companies SET active=false WHERE id=?",company);
+        mvc.perform(get("/api/v1/customers").header("Authorization",bearer))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("COMPANY_SUSPENDED"));
+        mvc.perform(get("/api/v1/company/capabilities").header("Authorization",bearer))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.companyActive").value(false));
+        jdbc.update("UPDATE companies SET active=true WHERE id=?",company);
+        jdbc.update("UPDATE branches SET active=false WHERE id=?",branch);
+        mvc.perform(get("/api/v1/appointments").header("Authorization",bearer))
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.code").value("COMPANY_SUSPENDED"));
+    }
+    @Test void freeBarberStillHasOwnAgendaWithoutReceivingTeamManagement() throws Exception {
+        jdbc.update("UPDATE company_subscriptions SET valid_until=NULL WHERE company_id=?",company);
+        String bearer="Bearer "+token(Role.BARBER);
+        mvc.perform(get("/api/v1/barbers/"+barber+"/appointments?date=2026-10-08").header("Authorization",bearer))
+            .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/user-accounts").header("Authorization",bearer)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/v1/company/capabilities").header("Authorization",bearer))
+            .andExpect(status().isOk()).andExpect(jsonPath("$.tier").value("FREE"));
     }
     @Test void manualReportNeverActivatesBeforePlatformOwnerReview() throws Exception {
         jdbc.update("UPDATE company_subscriptions SET valid_until=NULL WHERE company_id=?",company);

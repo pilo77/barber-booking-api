@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 
 import com.villamil.barberbooking.application.dto.response.PublicBarberResponse;
 import com.villamil.barberbooking.application.dto.response.PublicBarberShopResponse;
@@ -11,6 +13,7 @@ import com.villamil.barberbooking.application.dto.response.PublicBranchResponse;
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
 import com.villamil.barberbooking.application.dto.response.CompanyPublicBrandingResponse;
 import com.villamil.barberbooking.application.port.out.PublicBarberShopRepositoryPort;
+import com.villamil.barberbooking.application.port.out.MarketplaceRepositoryPort;
 import com.villamil.barberbooking.application.tenant.PublicTenantContext;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.BarberJpaEntity;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.entity.BranchJpaEntity;
@@ -23,8 +26,11 @@ import com.villamil.barberbooking.infrastructure.adapter.out.persistence.reposit
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.CompanyPublicProfileJpaRepository;
 import com.villamil.barberbooking.infrastructure.adapter.out.persistence.repository.ServiceOfferingJpaRepository;
 import com.villamil.barberbooking.domain.valueobject.ThemeMode;
+import com.villamil.barberbooking.domain.model.MarketplacePublicationState;
+import com.villamil.barberbooking.domain.exception.PublicResourceNotFoundException;
 
 @Component
+@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepositoryPort {
 
 	private final CompanyJpaRepository companyJpaRepository;
@@ -32,24 +38,28 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 	private final BranchJpaRepository branchJpaRepository;
 	private final ServiceOfferingJpaRepository serviceOfferingJpaRepository;
 	private final BarberJpaRepository barberJpaRepository;
+	private final MarketplaceRepositoryPort marketplace;
 
 	public PublicBarberShopPersistenceAdapter(
 			CompanyJpaRepository companyJpaRepository,
 			CompanyPublicProfileJpaRepository companyPublicProfileJpaRepository,
 			BranchJpaRepository branchJpaRepository,
 			ServiceOfferingJpaRepository serviceOfferingJpaRepository,
-			BarberJpaRepository barberJpaRepository
+			BarberJpaRepository barberJpaRepository,
+			MarketplaceRepositoryPort marketplace
 	) {
 		this.companyJpaRepository = companyJpaRepository;
 		this.companyPublicProfileJpaRepository = companyPublicProfileJpaRepository;
 		this.branchJpaRepository = branchJpaRepository;
 		this.serviceOfferingJpaRepository = serviceOfferingJpaRepository;
 		this.barberJpaRepository = barberJpaRepository;
+		this.marketplace = marketplace;
 	}
 
 	@Override
 	public Optional<PublicBarberShopResponse> findActiveCompanyBySlug(String companySlug) {
 		return companyJpaRepository.findBySlugAndActiveTrue(companySlug)
+				.filter(company -> marketplace.isCompanyPublic(company.getId()))
 				.map(this::toPublicCompany);
 	}
 
@@ -58,6 +68,7 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 		return companyJpaRepository.findBySlugAndActiveTrue(companySlug)
 				.map(company -> branchJpaRepository.findAllByCompanyIdAndActiveTrueOrderByIdAsc(company.getId())
 						.stream()
+						.filter(branch -> marketplace.isBranchPublic(branch.getCompanyId(), branch.getId()))
 						.map(this::toPublicBranch)
 						.toList())
 				.orElseGet(List::of);
@@ -105,6 +116,7 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 			Long companyId,
 			Long serviceOfferingId
 	) {
+		if (!marketplace.isCompanyPublic(companyId)) return Optional.empty();
 		return serviceOfferingJpaRepository
 				.findByIdAndCompanyIdAndActiveTrueAndVisibleForOnlineBookingTrue(serviceOfferingId, companyId)
 				.map(this::toPublicService);
@@ -112,6 +124,7 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 
 	@Override
 	public Optional<PublicBarberResponse> findVisibleBarberByTenant(Long companyId, Long branchId, Long barberId) {
+		if (!marketplace.isBranchPublic(companyId, branchId)) return Optional.empty();
 		return barberJpaRepository
 				.findByIdAndCompanyIdAndBranchIdAndActiveTrueAndActiveForOnlineBookingTrue(
 						barberId,
@@ -126,25 +139,34 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 			Long companyId,
 			Long serviceOfferingId
 	) {
+		if (!marketplace.isCompanyPublic(companyId)) return Optional.empty();
 		return serviceOfferingJpaRepository.findByIdAndCompanyId(serviceOfferingId, companyId)
 				.map(this::toPublicService);
 	}
 
 	@Override
 	public Optional<PublicBarberResponse> findBarberSnapshotByTenant(Long companyId, Long branchId, Long barberId) {
+		if (!marketplace.isBranchPublic(companyId, branchId)) return Optional.empty();
 		return barberJpaRepository.findByIdAndCompanyIdAndBranchId(barberId, companyId, branchId)
 				.map(this::toPublicBarber);
 	}
 
 	private Optional<BranchJpaEntity> findActiveCompanyAndBranch(String companySlug, String branchSlug) {
 		return companyJpaRepository.findBySlugAndActiveTrue(companySlug)
-				.flatMap(company -> branchJpaRepository.findByCompanyIdAndSlugAndActiveTrue(company.getId(), branchSlug));
+				.flatMap(company -> branchJpaRepository.findByCompanyIdAndSlugAndActiveTrue(company.getId(), branchSlug))
+				.filter(branch -> marketplace.isBranchPublic(branch.getCompanyId(), branch.getId()));
 	}
 
 	private PublicBarberShopResponse toPublicCompany(CompanyJpaEntity entity) {
 		CompanyPublicBrandingResponse branding = companyPublicProfileJpaRepository.findByCompanyId(entity.getId())
 				.map(profile -> toBranding(entity, profile))
 				.orElseGet(() -> fallbackBranding(entity));
+		// Explicit marketplace profiles are the moderated source of public content.
+		branding = marketplace.findPublishedCompanyProfile(entity.getId())
+				.map(profile -> new CompanyPublicBrandingResponse(entity.getName(), profile.description(), null,
+						profile.coverImageUrl(), null, null, null, ThemeMode.SYSTEM, profile.contactPhone(),
+						null, null, null, null, null))
+				.orElse(branding);
 		return new PublicBarberShopResponse(
 				entity.getSlug(),
 				branding.publicName(),
@@ -194,6 +216,13 @@ public class PublicBarberShopPersistenceAdapter implements PublicBarberShopRepos
 	}
 
 	private PublicBranchResponse toPublicBranch(BranchJpaEntity entity) {
+		var profile = marketplace.find(entity.getCompanyId(), entity.getId());
+		if (profile.isPresent()) {
+			var published = profile.orElseThrow();
+			if (published.publicationState() != MarketplacePublicationState.PUBLISHED)
+				throw new PublicResourceNotFoundException("Public branch not found");
+			return new PublicBranchResponse(entity.getSlug(), entity.getName(), published.address(), published.contactPhone());
+		}
 		return new PublicBranchResponse(
 				entity.getSlug(),
 				entity.getName(),

@@ -74,6 +74,7 @@ public class SecurityConfig {
 						.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
 								.hasAnyRole("PLATFORM_OWNER", "COMPANY_OWNER")
 						.requestMatchers(HttpMethod.GET,
+								"/api/v1/public/marketplace",
 								"/api/v1/public/barber-shops/*",
 								"/api/v1/public/barber-shops/*/branches",
 								"/api/v1/public/barber-shops/*/branches/*",
@@ -81,9 +82,14 @@ public class SecurityConfig {
 								"/api/v1/public/barber-shops/*/branches/*/barbers",
 								"/api/v1/public/barber-shops/*/branches/*/barbers/*/availability").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/v1/auth/me").authenticated()
+						.requestMatchers(HttpMethod.POST, "/api/v1/auth/change-password").authenticated()
 						.requestMatchers(HttpMethod.POST, "/api/v1/webhooks/wompi").permitAll()
 						.requestMatchers("/api/v1/billing/**").hasRole("COMPANY_OWNER")
 						.requestMatchers("/api/v1/platform/billing/**").hasRole("PLATFORM_OWNER")
+						.requestMatchers("/api/v1/platform/marketplace/**").hasRole("PLATFORM_OWNER")
+						.requestMatchers("/api/v1/company/marketplace-profile/**").hasRole("COMPANY_OWNER")
+						.requestMatchers(HttpMethod.GET, "/api/v1/company/capabilities")
+								.hasAnyRole("COMPANY_OWNER", "BRANCH_MANAGER", "RECEPTIONIST", "BARBER")
 						.requestMatchers(HttpMethod.GET, "/api/v1/company/context")
 								.hasAnyRole("COMPANY_OWNER", "BRANCH_MANAGER", "RECEPTIONIST", "BARBER")
 						.requestMatchers(

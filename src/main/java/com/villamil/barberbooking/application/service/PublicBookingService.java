@@ -94,7 +94,7 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 	@Transactional
 	public PublicAppointmentResponse create(CreatePublicAppointmentCommand command) {
 		String idempotencyKey = validateIdempotencyKey(command.idempotencyKey());
-		PublicTenantContext tenant = resolveTenant(command.companySlug(), command.branchSlug());
+		PublicTenantContext tenant = resolveTenant(command.companySlug(), command.branchSlug(), true);
 		Customer requestedCustomer = Customer.create(
 				command.customer().fullName(),
 				command.customer().phone(),
@@ -189,12 +189,17 @@ class PublicBookingService implements GetPublicBarberAvailabilityUseCase, Create
 	}
 
 	private PublicTenantContext resolveTenant(String companySlug, String branchSlug) {
+		return resolveTenant(companySlug, branchSlug, false);
+	}
+
+	private PublicTenantContext resolveTenant(String companySlug, String branchSlug, boolean lockPublication) {
 		PublicTenantContext tenant = publicBarberShopRepositoryPort.findActiveTenantBySlugs(
 				normalizeSlug(companySlug),
 				normalizeSlug(branchSlug)
 		)
 				.orElseThrow(() -> new PublicResourceNotFoundException("Public branch not found"));
-		subscriptionPolicy.requireActive(tenant.companyId());
+		if (lockPublication) subscriptionPolicy.requirePublicBookingLocked(tenant.companyId(), tenant.branchId());
+		else subscriptionPolicy.requirePublicBooking(tenant.companyId(), tenant.branchId());
 		return tenant;
 	}
 

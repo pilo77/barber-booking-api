@@ -38,7 +38,8 @@ public class UserAccountJpaEntity {
 	@Column(name = "email", nullable = false, length = 120)
 	private String email;
 
-	@Column(name = "password_hash", nullable = false)
+	// Password changes use the transactional CAS adapter and session-version increment exclusively.
+	@Column(name = "password_hash", nullable = false, updatable = false)
 	private String passwordHash;
 
 	@Column(name = "full_name", nullable = false, length = 120)

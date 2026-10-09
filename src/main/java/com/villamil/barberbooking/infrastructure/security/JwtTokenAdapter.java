@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -16,6 +17,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import com.villamil.barberbooking.application.dto.response.AuthenticatedUserResponse;
 import com.villamil.barberbooking.application.port.out.JwtTokenPort;
+import com.villamil.barberbooking.application.port.out.SessionVersionRepositoryPort;
+import com.villamil.barberbooking.domain.exception.AuthenticationFailedException;
 import com.villamil.barberbooking.domain.model.Role;
 import com.villamil.barberbooking.domain.model.UserAccount;
 
@@ -30,14 +33,28 @@ public class JwtTokenAdapter implements JwtTokenPort {
 	private final long expirationMinutes;
 	private final String issuer;
 	private final String audience;
+	private final SessionVersionRepositoryPort sessionVersions;
 
 	static final String KNOWN_INSECURE_DEFAULT = "local-dev-only-change-this-secret-with-at-least-32-chars";
 	static final int MIN_SECRET_LENGTH = 32;
 
+	/** Compatibility constructor for isolated tests; Spring uses the injected repository constructor. */
 	public JwtTokenAdapter(
 			String secret, long expirationMinutes
 	) {
 		this(secret, expirationMinutes, "barberia-ghs", "barberia-ghs-web");
+	}
+
+	/** Compatibility constructor for isolated tests; Spring uses the injected repository constructor. */
+	public JwtTokenAdapter(
+			String secret, long expirationMinutes, String issuer, String audience
+	) {
+		this(secret, expirationMinutes, issuer, audience, new SessionVersionRepositoryPort() {
+			@Override public long currentVersion(Long userId) { return 0; }
+			@Override public OptionalLong currentVersionForPasswordSnapshot(Long userId, String passwordHash) {
+				return OptionalLong.of(0);
+			}
+		});
 	}
 
 	@Autowired
@@ -45,7 +62,8 @@ public class JwtTokenAdapter implements JwtTokenPort {
 			@Value("${app.jwt.secret}") String secret,
 			@Value("${app.jwt.expiration-minutes:60}") long expirationMinutes,
 			@Value("${app.jwt.issuer:barberia-ghs}") String issuer,
-			@Value("${app.jwt.audience:barberia-ghs-web}") String audience
+			@Value("${app.jwt.audience:barberia-ghs-web}") String audience,
+			SessionVersionRepositoryPort sessionVersions
 	) {
 		if (secret == null || secret.isBlank()) {
 			throw new IllegalStateException("app.jwt.secret must not be null or blank");
@@ -68,10 +86,16 @@ public class JwtTokenAdapter implements JwtTokenPort {
 		this.expirationMinutes = expirationMinutes;
 		this.issuer = issuer;
 		this.audience = audience;
+		this.sessionVersions = java.util.Objects.requireNonNull(sessionVersions, "Session version repository is required");
 	}
 
 	@Override
 	public String createAccessToken(UserAccount userAccount) {
+		long sessionVersion = sessionVersions.currentVersionForPasswordSnapshot(userAccount.id(), userAccount.passwordHash())
+				.orElseThrow(() -> new AuthenticationFailedException("Invalid email or password"));
+		if (sessionVersion < 0) {
+			throw new AuthenticationFailedException("Invalid email or password");
+		}
 		Instant now = Instant.now();
 		Instant expiresAt = now.plusSeconds(expiresInSeconds());
 		return Jwts.builder()
@@ -86,6 +110,7 @@ public class JwtTokenAdapter implements JwtTokenPort {
 				.claim("branchId", userAccount.branchId())
 				.claim("barberId", userAccount.barberId())
 				.claim("roles", userAccount.roles().stream().map(Role::name).toList())
+				.claim("sessionVersion", sessionVersion)
 				.issuedAt(Date.from(now))
 				.expiration(Date.from(expiresAt))
 				.signWith(signingKey)
@@ -110,6 +135,15 @@ public class JwtTokenAdapter implements JwtTokenPort {
 		if (userId <= 0 || !String.valueOf(userId).equals(claims.getSubject())
 				|| claims.getId() == null || claims.getId().isBlank() || claims.getExpiration() == null) {
 			throw new IllegalArgumentException("Invalid access token claims");
+		}
+		Number rawSessionVersion = claims.get("sessionVersion", Number.class);
+		if (rawSessionVersion != null && !(rawSessionVersion instanceof Integer)
+				&& !(rawSessionVersion instanceof Long)) {
+			throw new IllegalArgumentException("Invalid access token claims");
+		}
+		long tokenVersion = rawSessionVersion == null ? 0 : rawSessionVersion.longValue();
+		if (tokenVersion < 0 || tokenVersion != sessionVersions.currentVersion(userId)) {
+			throw new IllegalArgumentException("Session is no longer valid");
 		}
 		Long companyId = numberClaim(claims, "companyId");
 		Long branchId = numberClaim(claims, "branchId");

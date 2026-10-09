@@ -23,12 +23,14 @@ public class AuthAbuseProtectionFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         String path = request.getRequestURI();
         boolean registration = "/api/v1/auth/register-company".equals(path);
-        if (!"POST".equals(request.getMethod()) || (!registration && !"/api/v1/auth/login".equals(path))) {
+        boolean passwordChange = "/api/v1/auth/change-password".equals(path);
+        if (!"POST".equals(request.getMethod()) || (!registration && !passwordChange && !"/api/v1/auth/login".equals(path))) {
             chain.doFilter(request, response); return;
         }
         long seconds = registration ? 3600 : 60;
-        int perAddress = registration ? 5 : 20;
-        if (!allow(path + ":all", registration ? 20 : 100, seconds)
+        int perAddress = registration ? 5 : passwordChange ? 10 : 20;
+        int global = registration ? 20 : passwordChange ? 50 : 100;
+        if (!allow(path + ":all", global, seconds)
                 || !allow(path + ":" + request.getRemoteAddr(), perAddress, seconds)) {
             response.setStatus(429); response.setContentType("application/problem+json");
             response.setHeader("Retry-After", Long.toString(seconds));

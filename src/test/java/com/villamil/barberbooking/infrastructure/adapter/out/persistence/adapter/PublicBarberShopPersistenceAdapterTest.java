@@ -12,6 +12,9 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import com.villamil.barberbooking.application.port.out.MarketplaceRepositoryPort;
+import com.villamil.barberbooking.domain.model.MarketplaceBranchProfile;
 
 import com.villamil.barberbooking.application.dto.response.PublicServiceOfferingResponse;
 import com.villamil.barberbooking.domain.valueobject.ThemeMode;
@@ -32,14 +35,21 @@ class PublicBarberShopPersistenceAdapterTest {
     private final BranchJpaRepository branchJpaRepository = mock(BranchJpaRepository.class);
     private final ServiceOfferingJpaRepository serviceOfferingJpaRepository = mock(ServiceOfferingJpaRepository.class);
     private final BarberJpaRepository barberJpaRepository = mock(BarberJpaRepository.class);
+    private final MarketplaceRepositoryPort marketplace = mock(MarketplaceRepositoryPort.class);
 
     private final PublicBarberShopPersistenceAdapter adapter = new PublicBarberShopPersistenceAdapter(
             companyJpaRepository,
             companyPublicProfileJpaRepository,
             branchJpaRepository,
             serviceOfferingJpaRepository,
-            barberJpaRepository
+            barberJpaRepository,
+            marketplace
     );
+
+    @BeforeEach void legacyVisibility() {
+        when(marketplace.isCompanyPublic(anyLong())).thenReturn(true);
+        when(marketplace.isBranchPublic(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).thenReturn(true);
+    }
 
     @Test
     void shouldReturnCompanyVisibleServicesWhenBranchBelongsToCompany() {
@@ -168,5 +178,53 @@ class PublicBarberShopPersistenceAdapterTest {
         assertThat(result).isEmpty();
         verify(serviceOfferingJpaRepository, never())
                 .findAllByCompanyIdAndActiveTrueAndVisibleForOnlineBookingTrueOrderBySortOrderAscIdAsc(anyLong());
+    }
+
+    @Test void explicitPrivatePublicationHidesCompanyAndAllDirectResourceMethods() {
+        CompanyJpaEntity company = mock(CompanyJpaEntity.class);
+        when(companyJpaRepository.findBySlugAndActiveTrue("private-shop")).thenReturn(Optional.of(company));
+        when(company.getId()).thenReturn(7L);
+        when(marketplace.isCompanyPublic(7L)).thenReturn(false);
+        when(marketplace.isBranchPublic(7L, 9L)).thenReturn(false);
+        assertThat(adapter.findActiveCompanyBySlug("private-shop")).isEmpty();
+        assertThat(adapter.findVisibleServiceByCompanyId(7L, 1L)).isEmpty();
+        assertThat(adapter.findServiceSnapshotByCompanyId(7L, 1L)).isEmpty();
+        assertThat(adapter.findVisibleBarberByTenant(7L, 9L, 1L)).isEmpty();
+        assertThat(adapter.findBarberSnapshotByTenant(7L, 9L, 1L)).isEmpty();
+        verify(serviceOfferingJpaRepository, never()).findByIdAndCompanyId(1L, 7L);
+        verify(barberJpaRepository, never()).findByIdAndCompanyIdAndBranchId(1L, 7L, 9L);
+    }
+
+    @Test void explicitPrivateBranchCannotResolvePublicTenantOrLists() {
+        CompanyJpaEntity company = mock(CompanyJpaEntity.class);
+        BranchJpaEntity branch = mock(BranchJpaEntity.class);
+        when(companyJpaRepository.findBySlugAndActiveTrue("private-shop")).thenReturn(Optional.of(company));
+        when(company.getId()).thenReturn(7L);
+        when(branch.getId()).thenReturn(9L); when(branch.getCompanyId()).thenReturn(7L);
+        when(branchJpaRepository.findByCompanyIdAndSlugAndActiveTrue(7L, "main")).thenReturn(Optional.of(branch));
+        when(branchJpaRepository.findAllByCompanyIdAndActiveTrueOrderByIdAsc(7L)).thenReturn(List.of(branch));
+        when(marketplace.isBranchPublic(7L, 9L)).thenReturn(false);
+        assertThat(adapter.findActiveBranchesByCompanySlug("private-shop")).isEmpty();
+        assertThat(adapter.findActiveBranchBySlugs("private-shop", "main")).isEmpty();
+        assertThat(adapter.findActiveTenantBySlugs("private-shop", "main")).isEmpty();
+        assertThat(adapter.findVisibleServicesByBranchSlugs("private-shop", "main")).isEmpty();
+        assertThat(adapter.findVisibleBarbersByBranchSlugs("private-shop", "main")).isEmpty();
+    }
+
+    @Test void moderatedMarketplaceContentOverridesUnreviewedLegacyBranding() {
+        CompanyJpaEntity company = mock(CompanyJpaEntity.class);
+        CompanyPublicProfileJpaEntity legacy = mock(CompanyPublicProfileJpaEntity.class);
+        when(companyJpaRepository.findBySlugAndActiveTrue("reviewed-shop")).thenReturn(Optional.of(company));
+        when(company.getId()).thenReturn(7L); when(company.getName()).thenReturn("Reviewed shop");
+        when(companyPublicProfileJpaRepository.findByCompanyId(7L)).thenReturn(Optional.of(legacy));
+        when(legacy.getPublicDescription()).thenReturn("Unreviewed draft copy");
+        var published = MarketplaceBranchProfile.draft(7L, 9L).edit("Neiva", "Centro", "Reviewed address",
+                "Reviewed description", "3001234567", "https://cdn.example.test/reviewed.jpg").submit().review(true, 100L, null);
+        when(marketplace.findPublishedCompanyProfile(7L)).thenReturn(Optional.of(published));
+        var result = adapter.findActiveCompanyBySlug("reviewed-shop").orElseThrow();
+        assertThat(result.name()).isEqualTo("Reviewed shop");
+        assertThat(result.description()).isEqualTo("Reviewed description");
+        assertThat(result.branding().coverImageUrl()).isEqualTo("https://cdn.example.test/reviewed.jpg");
+        assertThat(result.branding().contactPhone()).isEqualTo("3001234567");
     }
 }

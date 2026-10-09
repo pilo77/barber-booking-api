@@ -34,7 +34,7 @@ class NativePostgresBillingTest {
         Flyway.configure().dataSource(data).target("14").load().migrate();
         assertEquals(14, jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success AND type = 'SQL'", Integer.class));
         Flyway.configure().dataSource(data).load().migrate();
-        assertEquals(17, jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success AND type = 'SQL'", Integer.class));
+        assertEquals(19, jdbc.queryForObject("SELECT COUNT(*) FROM flyway_schema_history WHERE success AND type = 'SQL'", Integer.class));
         assertTrue(Flyway.configure().dataSource(data).load().validateWithResult().validationSuccessful);
         billing = new BillingPersistenceAdapter(jdbc); registration = new CompanyRegistrationAdapter(jdbc);
     }

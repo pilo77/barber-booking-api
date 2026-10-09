@@ -130,6 +130,32 @@ de puertos, no de repositorios JPA ni de detalles de PostgreSQL.
 
 ## Documentación
 
+### Directorio y acceso por capacidades
+
+Las barberías nuevas tienen un perfil `DRAFT`. El propietario completa
+`/api/v1/company/marketplace-profile`, solicita revisión y el superadministrador
+aprueba una versión concreta antes de aparecer en `/api/v1/public/marketplace`.
+Editar una ficha publicada vuelve a ocultarla hasta una nueva aprobación.
+
+`GET /api/v1/company/capabilities` distingue operación básica gratuita de Gestión
+empresarial. Esta última habilita la administración delegada de cuentas de equipo
+mediante la suscripción mensual de $40.000 COP y aprobación bancaria manual.
+Los permisos por rol y tenant siguen siendo obligatorios en ambos niveles.
+Suspender una empresa o sede bloquea su operación incluso con el flag comercial
+legado desactivado; login, seguridad de cuenta y facturación siguen disponibles.
+
+### Seguridad de cuenta
+
+`POST /api/v1/auth/change-password` requiere autenticación y los campos
+`oldPassword` y `newPassword`. Exige una contraseña nueva de al menos 12
+caracteres y hasta 72 bytes UTF-8. La actualización y la revocación de sesiones
+son transaccionales; el frontend está en `/account/security`.
+
+V18 crea publicación y auditoría; V19 crea versiones de sesión. No se modifican
+migraciones anteriores. La confirmación de correo, recuperación por email,
+Google OAuth y MFA aún requieren integraciones verificadas; no se anuncian como
+operativas. Véase [revisión de la referencia Antana](docs/security-antana-reference-review.md).
+
 En este repositorio encontrarás la documentación principal del proyecto:
 
 - `docs/architecture.md` — Arquitectura del proyecto.

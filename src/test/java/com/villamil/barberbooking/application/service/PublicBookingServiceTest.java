@@ -81,6 +81,9 @@ class PublicBookingServiceTest {
 	@Mock
 	private PublicBookingRateLimiter publicBookingRateLimiter;
 
+	@Mock
+	private PublicSubscriptionPolicy subscriptionPolicy;
+
 	private PublicBookingService service;
 
 	@BeforeEach
@@ -95,7 +98,7 @@ class PublicBookingServiceTest {
 				publicBookingIdempotencyPort,
 				publicBookingRequestHasher,
 				publicBookingRateLimiter,
-				org.mockito.Mockito.mock(PublicSubscriptionPolicy.class)
+				subscriptionPolicy
 		);
 	}
 
@@ -118,6 +121,8 @@ class PublicBookingServiceTest {
 		assertThat(response).isEqualTo(expected);
 		verify(publicBarberShopRepositoryPort).findActiveTenantBySlugs("ponte-perro", "neiva-centro");
 		verify(tenantContextExecutor).withTenant(eq(new TenantContext(7L, 9L)), any());
+		verify(subscriptionPolicy).requirePublicBooking(7L, 9L);
+		verify(subscriptionPolicy, never()).requirePublicBookingLocked(any(), any());
 	}
 
 	@Test
@@ -174,6 +179,19 @@ class PublicBookingServiceTest {
 		assertThat(response.customer().fullName()).isEqualTo("Carlos Villamil");
 		verify(customerRepositoryPort, never()).save(any());
 		verify(publicBookingIdempotencyPort).complete("booking-key-123", "claim-token-123", 10L);
+		verify(subscriptionPolicy).requirePublicBookingLocked(7L, 9L);
+		verify(subscriptionPolicy, never()).requirePublicBooking(any(), any());
+	}
+
+	@Test
+	void hiddenPublicationStopsCreationBeforeAnyCustomerOrAppointmentSideEffect() {
+		when(publicBarberShopRepositoryPort.findActiveTenantBySlugs("ponte-perro", "neiva-centro"))
+				.thenReturn(Optional.of(PUBLIC_TENANT));
+		doThrow(new PublicResourceNotFoundException("Public booking is unavailable"))
+				.when(subscriptionPolicy).requirePublicBookingLocked(7L, 9L);
+		assertThatThrownBy(() -> service.create(command())).isInstanceOf(PublicResourceNotFoundException.class);
+		org.mockito.Mockito.verifyNoInteractions(customerRepositoryPort, appointmentRepositoryPort,
+				publicBookingIdempotencyPort, publicBookingRequestHasher, publicBookingRateLimiter);
 	}
 
 	@Test
